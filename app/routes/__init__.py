@@ -21,7 +21,8 @@ routers = [
     direct_application_router,
     project_router,
     cv_router,
-    job_router
+    job_router,
+    email_router
 ]
 
 __all__ = [
