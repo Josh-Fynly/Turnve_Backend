@@ -11,11 +11,12 @@ from app.core.database import Base
 from app.core.utils import utc_now
 
 if TYPE_CHECKING:
-    from app.database.platform_models import ProjectSimulation, CV, JobApplication, Portfolio, UserAchievement
+   from app.database.platform_models import ProjectSimulation, CV, JobApplication, Portfolio, UserAchievement
     from app.database.community_models import ForumPost, ForumComment, Mentorship  
     from app.database.job_models import SavedJob, JobAlert
     from app.database.cv_models import CVExport
     from app.database.gamification_models import UserLevel
+    from app.database.payments_models import Subscription
 
 
 class UserRole(str, enum.Enum):
@@ -72,14 +73,14 @@ class User(Base):
     achievements: Mapped[List["UserAchievement"]] = relationship("UserAchievement", back_populates="user")
     level_progression: Mapped[Optional["UserLevel"]] = relationship("UserLevel", back_populates="user", uselist=False)
 
-# NEW — Payments / Subscriptions
+    # NEW — Payments / Subscriptions
     subscriptions: Mapped[List["Subscription"]] = relationship(
         "Subscription",
         back_populates="user",
         cascade="all, delete-orphan"
     )
 
-# Composite indexes for common query patterns
+   # Composite indexes for common query patterns
     __table_args__ = (
         Index('idx_user_active_role', 'is_active', 'role'),
         Index('idx_user_verified_active', 'is_verified', 'is_active'),
