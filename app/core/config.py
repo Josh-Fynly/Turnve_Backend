@@ -36,11 +36,13 @@ class Settings(BaseSettings):
     gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")  # Google Gemini - FREE TIER
     groq_api_key: Optional[str] = Field(default=None, alias="GROQ_API_KEY")  # Groq - FREE TIER
     
-    # Email Configuration - Resend
-    resend_api_key: Optional[str] = Field(default=None, alias="RESEND_API_KEY")
-    resend_sender_email: str = Field(alias="RESEND_SENDER_EMAIL")
-    resend_sender_name: str = Field(alias="RESEND_SENDER_NAME")
-    from_email: str = Field(alias="FROM_EMAIL")
+    # Email Configuration - MailerSend
+mailersend_api_key: Optional[str] = Field(default=None, alias="MAILERSEND_API_KEY")
+mailersend_sender_email: str = Field(alias="MAILERSEND_SENDER_EMAIL")
+mailersend_sender_name: str = Field(alias="MAILERSEND_SENDER_NAME")
+from_email: str = Field(alias="FROM_EMAIL")
+
+email_verification_enabled: bool = Field(alias="EMAIL_VERIFICATION_ENABLED")
     
     # Email verification enabled with Resend
     email_verification_enabled: bool = Field(alias="EMAIL_VERIFICATION_ENABLED")
