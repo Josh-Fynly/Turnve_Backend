@@ -59,6 +59,13 @@ paystack_public_key: Optional[str] = Field(default=None, alias="PAYSTACK_PUBLIC_
 paystack_secret_key: Optional[str] = Field(default=None, alias="PAYSTACK_SECRET_KEY")
 paystack_base_url: str = Field(default="https://api.paystack.co")
 
+# Paystack Payments
+    paystack_public_key: Optional[str] = Field(default=None, alias="PAYSTACK_PUBLIC_KEY")
+    paystack_secret_key: Optional[str] = Field(default=None, alias="PAYSTACK_SECRET_KEY")
+    paystack_webhook_secret: Optional[str] = Field(default=None, alias="PAYSTACK_WEBHOOK_SECRET")
+    paystack_callback_url: Optional[str] = Field(default=None, alias="PAYSTACK_CALLBACK_URL")
+    paystack_base_url: str = Field(default="https://api.paystack.co", alias="PAYSTACK_BASE_URL")
+
     # Video / Educational APIs (Free)
     youtube_api_key: Optional[str] = Field(default=None, alias="YOUTUBE_API_KEY")
 
