@@ -1,4 +1,4 @@
-# TURN - Project Manager Career Platform
+# TURNVE - AI-powered Career Simulator 
 
 A comprehensive FastAPI-based platform for project managers to showcase their work, find opportunities, and build professional networks.
 
@@ -702,3 +702,4 @@ For support and questions:
 
 
 **Built by the TURNVE Team**
+
