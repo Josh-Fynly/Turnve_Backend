@@ -18,6 +18,13 @@ from app.schemas.project_schemas import (
     UpdateSimulationRequest, SimulationStatsResponse
 )
 
+from app.services.simulation_engine import (
+    load_simulation,
+    apply_action,
+    generate_score,
+    generate_coach_summary,
+)
+
 
 router = APIRouter(prefix="/api/v1/simulations", tags=["Project Simulations"])
 
