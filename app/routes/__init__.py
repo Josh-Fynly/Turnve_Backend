@@ -12,6 +12,7 @@ from .project_routes import router as project_router
 from .cv_routes import router as cv_router
 from .job_routes import router as job_router
 from .email_routes import router as email_router
+from app.api.simulations import demo_router
 # List of all routers to be included in the main app
 routers = [
     auth_router,
@@ -23,6 +24,7 @@ routers = [
     cv_router,
     job_router,
     email_router
+    demo_router
 ]
 
 __all__ = [
