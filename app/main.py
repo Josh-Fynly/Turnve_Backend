@@ -80,7 +80,7 @@ def custom_openapi():
 app = FastAPI(
     title=settings.app_name,
     description="""
-    TURN - A comprehensive web application for aspiring project managers.
+    TURNVE - A comprehensive web application for aspiring project managers.
     
     ##  How to Authenticate
     
@@ -130,8 +130,8 @@ app = FastAPI(
     """,
     version="1.0.0",
     contact={
-        "name": "TURN Development Team",
-        "email": "support@turn-platform.com",
+        "name": "TURNVE Development Team",
+        "email": "supporttech@turnve.com",
     },
 
     lifespan=lifespan,
