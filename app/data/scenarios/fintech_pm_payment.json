@@ -1,1 +1,134 @@
+{
+  "id": "fintech_pm_payments",
+  "title": "Associate Product Manager — Fintech Payments Launch",
+  "industry": "Fintech",
+  "difficulty": "Beginner–Intermediate",
+  "estimated_time_minutes": 10,
 
+  "context": {
+    "company": "PayWave",
+    "market": "Nigeria",
+    "role": "Associate Product Manager",
+    "brief": "You are responsible for launching a new payments feature for SMEs. Your goal is to balance speed, compliance, and user trust."
+  },
+
+  "objectives": [
+    "Prioritize features under constraints",
+    "Manage regulatory and operational risk",
+    "Resolve stakeholder conflicts",
+    "Define success metrics",
+    "Respond to incidents responsibly"
+  ],
+
+  "decisions": [
+    {
+      "id": "feature_scope",
+      "prompt": "Engineering capacity is limited. What do you launch?",
+      "options": [
+        {
+          "id": "core_only",
+          "label": "Launch core payments only",
+          "impact": { "product": 2, "risk": 1, "speed": 2 }
+        },
+        {
+          "id": "subscriptions",
+          "label": "Add subscriptions at launch",
+          "impact": { "product": 3, "risk": -1, "speed": -1 }
+        },
+        {
+          "id": "delay_launch",
+          "label": "Delay launch for full feature set",
+          "impact": { "product": 1, "risk": 2, "speed": -2 }
+        }
+      ]
+    },
+
+    {
+      "id": "compliance",
+      "prompt": "Legal flags potential KYC risks.",
+      "options": [
+        {
+          "id": "delay_for_compliance",
+          "label": "Delay launch to fix compliance issues",
+          "impact": { "risk": 3, "speed": -2 }
+        },
+        {
+          "id": "soft_launch",
+          "label": "Soft launch to limited users",
+          "impact": { "risk": 1, "speed": 1 }
+        },
+        {
+          "id": "ignore_warning",
+          "label": "Ship and patch later",
+          "impact": { "risk": -3, "speed": 2 }
+        }
+      ]
+    },
+
+    {
+      "id": "stakeholders",
+      "prompt": "Sales wants speed. Engineering wants refactor.",
+      "options": [
+        {
+          "id": "side_sales",
+          "label": "Side with Sales",
+          "impact": { "communication": -1 }
+        },
+        {
+          "id": "side_engineering",
+          "label": "Side with Engineering",
+          "impact": { "communication": -1 }
+        },
+        {
+          "id": "facilitate",
+          "label": "Facilitate a compromise",
+          "impact": { "communication": 3 }
+        }
+      ]
+    },
+
+    {
+      "id": "metrics",
+      "prompt": "CEO asks how success will be measured.",
+      "options": [
+        {
+          "id": "transactions",
+          "label": "Daily transactions",
+          "impact": { "analytics": 2 }
+        },
+        {
+          "id": "activation",
+          "label": "User activation rate",
+          "impact": { "analytics": 3 }
+        },
+        {
+          "id": "revenue",
+          "label": "Revenue only",
+          "impact": { "analytics": 1 }
+        }
+      ]
+    },
+
+    {
+      "id": "incident",
+      "prompt": "Payments fail for 5% of users post-launch.",
+      "options": [
+        {
+          "id": "rollback",
+          "label": "Rollback immediately",
+          "impact": { "ownership": 2 }
+        },
+        {
+          "id": "hotfix",
+          "label": "Monitor and hotfix",
+          "impact": { "ownership": 3 }
+        },
+        {
+          "id": "ignore",
+          "label": "Ignore low percentage",
+          "impact": { "ownership": -3 }
+        }
+      ]
+    }
+  ]
+}
