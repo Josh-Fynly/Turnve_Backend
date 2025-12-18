@@ -69,8 +69,48 @@ def generate_score(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def generate_coach_summary(state: Dict[str, Any], score: Dict[str, Any]) -> str:
-    return (
-        f"Overall score: {score['overall']}. "
-        f"You balanced delivery speed with stakeholder trust. "
-        f"To improve, focus on reducing risk earlier while maintaining momentum."
+    risk = state.get("risk", 0)
+    trust = state.get("stakeholder_trust", 0)
+    deadline = state.get("deadline_days", 0)
+    overall = score.get("overall", 0)
+
+    insights = []
+
+    # Risk analysis
+    if risk > 0.6:
+        insights.append(
+            "Your decisions significantly increased delivery risk. In real-world PM roles, this often leads to firefighting later."
+        )
+    elif risk < 0.3:
+        insights.append(
+            "You proactively reduced risk, which is a strong signal of senior-level product judgment."
+        )
+
+    # Stakeholder trust analysis
+    if trust < 0.4:
+        insights.append(
+            "Stakeholder trust declined. This can limit influence and slow execution in future phases."
+        )
+    elif trust > 0.7:
+        insights.append(
+            "You strengthened stakeholder confidence — a critical advantage when navigating uncertainty."
+        )
+
+    # Deadline pressure
+    if deadline < 0:
+        insights.append(
+            "You traded timeline certainty for quality. This is often the right call in regulated environments."
+        )
+    elif deadline > 10:
+        insights.append(
+            "You preserved schedule flexibility, giving the team room to adapt."
+        )
+
+    # Final synthesis
+    summary = (
+        f"Overall performance score: {overall}. "
+        + " ".join(insights)
+        + " Focus on balancing speed, trust, and risk as pressure increases."
     )
+
+    return summary
