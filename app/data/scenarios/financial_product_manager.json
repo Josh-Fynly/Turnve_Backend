@@ -1,1 +1,78 @@
+{
+  "meta": {
+    "id": "financial_product_manager",
+    "title": "Fintech Product Launch Under Pressure",
+    "industry": "Financial Services",
+    "role": "Product Manager",
+    "difficulty": "Intermediate",
+    "estimated_time_minutes": 8,
+    "learning_goals": [
+      "Trade-off decision making",
+      "Risk management under deadlines",
+      "Stakeholder communication"
+    ]
+  },
 
+  "initial_state": {
+    "deadline_days": 14,
+    "risk": 0.3,
+    "stakeholder_trust": 0.65
+  },
+
+  "context": {
+    "summary": "You are the Product Manager at a fast-growing fintech startup preparing to launch a new payments feature. The CEO wants speed, compliance wants caution, and users are already waiting.",
+    "constraints": [
+      "Limited engineering capacity",
+      "Regulatory uncertainty",
+      "Strong competitive pressure"
+    ]
+  },
+
+  "actions": {
+    "prioritization": {
+      "prompt": "Engineering flags compliance risks two weeks before launch. What do you do?",
+      "choices": {
+        "delay_release": {
+          "label": "Delay release to address compliance concerns",
+          "effects": {
+            "deadline_days": -5,
+            "risk": -0.2,
+            "stakeholder_trust": 0.15
+          },
+          "feedback": "You chose long-term trust over speed. Compliance confidence improved, but leadership is anxious about delays."
+        },
+        "ship_now": {
+          "label": "Ship on time and address issues post-launch",
+          "effects": {
+            "deadline_days": 0,
+            "risk": 0.3,
+            "stakeholder_trust": -0.25
+          },
+          "feedback": "You met the deadline, but stakeholders are uneasy. Risk exposure increased significantly."
+        }
+      }
+    },
+
+    "stakeholder_alignment": {
+      "prompt": "The CEO pushes for aggressive marketing before final QA approval. How do you respond?",
+      "choices": {
+        "push_back": {
+          "label": "Push back and request QA sign-off before marketing",
+          "effects": {
+            "risk": -0.1,
+            "stakeholder_trust": 0.1
+          },
+          "feedback": "Your data-driven pushback preserved product integrity and earned quiet respect."
+        },
+        "agree": {
+          "label": "Agree to marketing to maintain momentum",
+          "effects": {
+            "risk": 0.15,
+            "stakeholder_trust": -0.05
+          },
+          "feedback": "Momentum increased, but alignment gaps widened across teams."
+        }
+      }
+    }
+  }
+}
