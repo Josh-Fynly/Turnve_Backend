@@ -6,23 +6,13 @@ from typing import Dict, Any, Tuple
 BASE_PATH = Path(__file__).parent.parent / "data" / "scenarios"
 
 
-def load_scenario(industry: str, role: str) -> Dict[str, Any]:
-    """
-    Load a scenario using industry and role naming.
-    """
-    filename = f"{industry}_{role}.json"
-    path = BASE_PATH / filename
-
-    if not path.exists():
-        raise ValueError("Scenario not found")
-
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
+# -----------------------------
+# Scenario Loading
+# -----------------------------
 
 def load_simulation(simulation_id: str) -> Dict[str, Any]:
     """
-    Load a simulation by its unique ID.
+    Load a simulation scenario by unique ID.
     """
     file_path = BASE_PATH / f"{simulation_id}.json"
 
@@ -33,34 +23,53 @@ def load_simulation(simulation_id: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def initialize_state(scenario: Dict[str, Any]) -> Dict[str, Any]:
+# -----------------------------
+# State Initialization
+# -----------------------------
+
+def initialize_state(simulation_id: str) -> Dict[str, Any]:
     """
-    Initialize a fresh simulation state.
+    Initialize a fresh simulation state from scenario definition.
     """
+    scenario = load_simulation(simulation_id)
+
+    if "initial_state" not in scenario:
+        raise ValueError("Scenario missing initial_state")
+
     return scenario["initial_state"].copy()
 
 
+# -----------------------------
+# Core Simulation Logic
+# -----------------------------
+
 def apply_action(
-    scenario: Dict[str, Any],
+    simulation_id: str,
     state: Dict[str, Any],
     action_id: str,
     choice: str,
 ) -> Tuple[Dict[str, Any], str, Dict[str, Any]]:
     """
-    Apply a decision to the current simulation state.
-    """
-    new_state = state.copy()
+    Apply a user decision to the simulation.
 
-    if action_id not in scenario["actions"]:
+    Stateless:
+    - Frontend provides current state
+    - Backend returns updated state
+    """
+    scenario = load_simulation(simulation_id)
+
+    actions = scenario.get("actions", {})
+    if action_id not in actions:
         raise ValueError("Invalid action")
 
-    action = scenario["actions"][action_id]
-
-    if choice not in action["choices"]:
+    action = actions[action_id]
+    choices = action.get("choices", {})
+    if choice not in choices:
         raise ValueError("Invalid choice")
 
-    outcome = action["choices"][choice]
+    outcome = choices[choice]
 
+    new_state = state.copy()
     for key, delta in outcome.get("effects", {}).items():
         new_state[key] = round(new_state.get(key, 0) + delta, 2)
 
@@ -75,12 +84,18 @@ def apply_action(
     return new_state, feedback, log
 
 
+# -----------------------------
+# Scoring & Coaching
+# -----------------------------
+
 def generate_score(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Generate a simple performance score from the current state.
+    Generate a quantitative performance score.
     """
     score = {
-        "execution": max(0, min(1, 1 - abs(state.get("deadline_days", 0)) / 10)),
+        "execution": max(
+            0, min(1, 1 - abs(state.get("deadline_days", 0)) / 10)
+        ),
         "risk_management": max(0, 1 - state.get("risk", 0)),
         "stakeholder_management": state.get("stakeholder_trust", 0),
     }
@@ -93,42 +108,30 @@ def generate_coach_summary(state: Dict[str, Any], score: Dict[str, Any]) -> str:
     """
     Generate qualitative coaching feedback.
     """
+    insights = []
+
     risk = state.get("risk", 0)
     trust = state.get("stakeholder_trust", 0)
-    deadline = state.get("deadline_days", 0)
-    overall = score.get("overall", 0)
-
-    insights = []
 
     if risk > 0.6:
         insights.append(
-            "Your decisions significantly increased delivery risk, which often leads to downstream issues."
+            "Your decisions significantly increased delivery risk."
         )
     elif risk < 0.3:
         insights.append(
-            "You proactively reduced risk, showing strong judgment under pressure."
+            "You proactively reduced risk, showing strong judgment."
         )
 
     if trust < 0.4:
         insights.append(
-            "Stakeholder trust declined, which may affect future alignment."
+            "Stakeholder trust declined, which may slow execution."
         )
     elif trust > 0.7:
         insights.append(
-            "You strengthened stakeholder confidence during uncertainty."
-        )
-
-    if deadline < 0:
-        insights.append(
-            "You traded speed for quality — a reasonable call in regulated environments."
-        )
-    elif deadline > 10:
-        insights.append(
-            "You preserved schedule flexibility, giving your team room to adapt."
+            "You strengthened stakeholder confidence under pressure."
         )
 
     return (
-        f"Overall performance score: {overall}. "
+        f"Overall performance score: {score.get('overall', 0)}. "
         + " ".join(insights)
-        + " Focus on balancing speed, trust, and risk as complexity increases."
     )
