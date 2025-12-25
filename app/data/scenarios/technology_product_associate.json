@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "id": "technology_product_associate",
+    "title": "SaaS Feature Delivery Under Pressure",
+    "industry": "Technology & ICT",
+    "role": "Product Associate",
+    "difficulty": "Beginner",
+    "estimated_time_minutes": 6
+  },
+
+  "initial_state": {
+    "deadline_days": 14,
+    "risk": 0.25,
+    "stakeholder_trust": 0.6
+  },
+
+  "context": {
+    "summary": "You are a Product Associate at a growing SaaS company. A key feature must be delivered quickly while balancing engineering quality and stakeholder expectations.",
+    "constraints": [
+      "Limited engineering bandwidth",
+      "Unclear technical requirements",
+      "High visibility from leadership"
+    ]
+  },
+
+  "actions": {
+    "prioritization": {
+      "prompt": "Engineering raises concerns about technical debt two weeks before launch. What do you do?",
+      "choices": {
+        "delay_for_quality": {
+          "label": "Delay delivery to address technical debt",
+          "effects": {
+            "deadline_days": -4,
+            "risk": -0.2,
+            "stakeholder_trust": 0.15
+          },
+          "feedback": "You chose long-term stability over speed. Engineering morale improved, but leadership is watching timelines closely."
+        },
+        "ship_fast": {
+          "label": "Ship quickly and plan fixes later",
+          "effects": {
+            "deadline_days": 0,
+            "risk": 0.3,
+            "stakeholder_trust": -0.2
+          },
+          "feedback": "You hit the deadline, but risk increased and stakeholders are uneasy about future reliability."
+        }
+      }
+    },
+
+    "stakeholder_alignment": {
+      "prompt": "A senior stakeholder asks for scope expansion late in the sprint. How do you respond?",
+      "choices": {
+        "push_back_with_data": {
+          "label": "Push back using delivery data and constraints",
+          "effects": {
+            "risk": -0.1,
+            "stakeholder_trust": 0.1
+          },
+          "feedback": "Your structured communication preserved focus and built quiet trust."
+        },
+        "accept_scope": {
+          "label": "Accept the additional scope to please stakeholders",
+          "effects": {
+            "risk": 0.15,
+            "stakeholder_trust": -0.05
+          },
+          "feedback": "Stakeholders felt heard, but delivery risk increased."
+        }
+      }
+    }
+  }
+}
