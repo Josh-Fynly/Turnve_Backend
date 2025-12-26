@@ -2,17 +2,12 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
-
 BASE_PATH = Path(__file__).parent.parent / "data" / "scenarios"
 
 
-# -----------------------------
-# Scenario Loading
-# -----------------------------
-
 def load_simulation(simulation_id: str) -> Dict[str, Any]:
     """
-    Load a simulation scenario by unique ID.
+    Load a simulation scenario by ID.
     """
     file_path = BASE_PATH / f"{simulation_id}.json"
 
@@ -23,25 +18,12 @@ def load_simulation(simulation_id: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-# -----------------------------
-# State Initialization
-# -----------------------------
-
-def initialize_state(simulation_id: str) -> Dict[str, Any]:
+def initialize_state(scenario: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Initialize a fresh simulation state from scenario definition.
+    Initialize simulation state from scenario.
     """
-    scenario = load_simulation(simulation_id)
+    return scenario.get("initial_state", {}).copy()
 
-    if "initial_state" not in scenario:
-        raise ValueError("Scenario missing initial_state")
-
-    return scenario["initial_state"].copy()
-
-
-# -----------------------------
-# Core Simulation Logic
-# -----------------------------
 
 def apply_action(
     simulation_id: str,
@@ -50,11 +32,8 @@ def apply_action(
     choice: str,
 ) -> Tuple[Dict[str, Any], str, Dict[str, Any]]:
     """
-    Apply a user decision to the simulation.
-
-    Stateless:
-    - Frontend provides current state
-    - Backend returns updated state
+    Stateless action application.
+    Frontend sends state, backend returns updated state.
     """
     scenario = load_simulation(simulation_id)
 
@@ -84,18 +63,12 @@ def apply_action(
     return new_state, feedback, log
 
 
-# -----------------------------
-# Scoring & Coaching
-# -----------------------------
-
 def generate_score(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Generate a quantitative performance score.
+    Generate a simple performance score.
     """
     score = {
-        "execution": max(
-            0, min(1, 1 - abs(state.get("deadline_days", 0)) / 10)
-        ),
+        "execution": max(0, min(1, 1 - abs(state.get("deadline_days", 0)) / 10)),
         "risk_management": max(0, 1 - state.get("risk", 0)),
         "stakeholder_management": state.get("stakeholder_trust", 0),
     }
@@ -106,7 +79,7 @@ def generate_score(state: Dict[str, Any]) -> Dict[str, Any]:
 
 def generate_coach_summary(state: Dict[str, Any], score: Dict[str, Any]) -> str:
     """
-    Generate qualitative coaching feedback.
+    Generate human-readable coaching feedback.
     """
     insights = []
 
@@ -114,22 +87,14 @@ def generate_coach_summary(state: Dict[str, Any], score: Dict[str, Any]) -> str:
     trust = state.get("stakeholder_trust", 0)
 
     if risk > 0.6:
-        insights.append(
-            "Your decisions significantly increased delivery risk."
-        )
+        insights.append("Your decisions significantly increased delivery risk.")
     elif risk < 0.3:
-        insights.append(
-            "You proactively reduced risk, showing strong judgment."
-        )
+        insights.append("You proactively reduced risk, a strong junior-to-mid PM signal.")
 
     if trust < 0.4:
-        insights.append(
-            "Stakeholder trust declined, which may slow execution."
-        )
+        insights.append("Stakeholder trust declined, which may slow future execution.")
     elif trust > 0.7:
-        insights.append(
-            "You strengthened stakeholder confidence under pressure."
-        )
+        insights.append("You strengthened stakeholder confidence under pressure.")
 
     return (
         f"Overall performance score: {score.get('overall', 0)}. "
