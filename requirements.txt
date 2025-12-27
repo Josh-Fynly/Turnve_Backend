@@ -1,3 +1,5 @@
+streamlit==1.32.2
+
 # FastAPI and ASGI
 fastapi==0.104.1
 # ASGI Server
