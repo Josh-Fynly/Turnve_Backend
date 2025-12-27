@@ -1,71 +1,42 @@
 {
-  "meta": {
-    "id": "technology_product_associate",
-    "title": "SaaS Feature Delivery Under Pressure",
-    "industry": "Technology & ICT",
-    "role": "Product Associate",
-    "difficulty": "Beginner",
-    "estimated_time_minutes": 6
-  },
-
+  "id": "technology_product_associate",
+  "role": "Product Associate",
+  "industry": "Technology",
   "initial_state": {
     "deadline_days": 14,
-    "risk": 0.25,
+    "risk": 0.3,
     "stakeholder_trust": 0.6
   },
-
-  "context": {
-    "summary": "You are a Product Associate at a growing SaaS company. A key feature must be delivered quickly while balancing engineering quality and stakeholder expectations.",
-    "constraints": [
-      "Limited engineering bandwidth",
-      "Unclear technical requirements",
-      "High visibility from leadership"
-    ]
-  },
-
   "actions": {
-    "prioritization": {
-      "prompt": "Engineering raises concerns about technical debt two weeks before launch. What do you do?",
+    "handle_api_delay": {
+      "prompt": "The API team says they may need an extra week. What do you do?",
       "choices": {
-        "delay_for_quality": {
-          "label": "Delay delivery to address technical debt",
-          "effects": {
-            "deadline_days": -4,
-            "risk": -0.2,
-            "stakeholder_trust": 0.15
-          },
-          "feedback": "You chose long-term stability over speed. Engineering morale improved, but leadership is watching timelines closely."
-        },
-        "ship_fast": {
-          "label": "Ship quickly and plan fixes later",
+        "push_launch": {
+          "text": "Push the team to launch on the original date and fix issues after release.",
           "effects": {
             "deadline_days": 0,
-            "risk": 0.3,
-            "stakeholder_trust": -0.2
+            "risk": 0.4,
+            "stakeholder_trust": -0.1
           },
-          "feedback": "You hit the deadline, but risk increased and stakeholders are uneasy about future reliability."
-        }
-      }
-    },
-
-    "stakeholder_alignment": {
-      "prompt": "A senior stakeholder asks for scope expansion late in the sprint. How do you respond?",
-      "choices": {
-        "push_back_with_data": {
-          "label": "Push back using delivery data and constraints",
-          "effects": {
-            "risk": -0.1,
-            "stakeholder_trust": 0.1
-          },
-          "feedback": "Your structured communication preserved focus and built quiet trust."
+          "feedback": "You maintained momentum, but unresolved dependencies increased delivery risk and weakened stakeholder confidence."
         },
-        "accept_scope": {
-          "label": "Accept the additional scope to please stakeholders",
+        "negotiate_delay": {
+          "text": "Negotiate a short delay and align stakeholders on a revised plan.",
           "effects": {
-            "risk": 0.15,
-            "stakeholder_trust": -0.05
+            "deadline_days": -3,
+            "risk": -0.2,
+            "stakeholder_trust": 0.2
           },
-          "feedback": "Stakeholders felt heard, but delivery risk increased."
+          "feedback": "You balanced delivery realism with communication, reducing risk and strengthening stakeholder trust."
+        },
+        "escalate_issue": {
+          "text": "Escalate the issue to leadership for direction.",
+          "effects": {
+            "deadline_days": -1,
+            "risk": 0.1,
+            "stakeholder_trust": 0.0
+          },
+          "feedback": "Escalation brought clarity, but limited your ownership of the decision."
         }
       }
     }
