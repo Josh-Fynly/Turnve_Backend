@@ -74,7 +74,7 @@ def initialize_simulation():
 
 def restart_simulation():
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 
 def apply_action(action_id, choice_key):
