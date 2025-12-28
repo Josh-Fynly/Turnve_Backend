@@ -1,6 +1,6 @@
 # Streamlit demo – lightweight, deployable on Streamlit Cloud
 
-streamlit==1.32.2
+streamlit
 
 # Core Python utilities
 pydantic==2.5.0
