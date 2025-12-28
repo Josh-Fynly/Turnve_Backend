@@ -238,4 +238,4 @@ elif st.session_state.stage == 7:
     st.button("Download Portfolio (PDF)")
     st.button("Share with Employers")
 
-    st.button("Restart Demo", on_click=lambda: go_to(0))
+    st.button("Restart Demo", on_click=lambda: go_to(0)
