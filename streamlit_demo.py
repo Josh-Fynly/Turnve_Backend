@@ -1,18 +1,139 @@
 import streamlit as st
+from datetime import datetime
+from io import BytesIO
 
 # -----------------------------
-# Page config
+# CONFIG
 # -----------------------------
 st.set_page_config(
     page_title="Turnve – Career Simulation Demo",
-    layout="wide",
+    layout="wide"
 )
 
 # -----------------------------
-# Session state initialization
+# DATA DEFINITIONS
 # -----------------------------
-if "stage" not in st.session_state:
-    st.session_state.stage = 0
+
+INDUSTRIES = {
+    "Technology & ICT": {
+        "freemium": True,
+        "roles": {
+            "Product Associate": {
+                "project": {
+                    "title": "Product Feature Launch Simulation",
+                    "tasks": [
+                        "Analyze user feedback and feature request",
+                        "Define success metrics",
+                        "Draft a product requirement summary",
+                        "Align with stakeholders"
+                    ]
+                }
+            },
+            "Software Project Coordinator": {
+                "project": {
+                    "title": "Sprint Coordination & Delivery Simulation",
+                    "tasks": [
+                        "Review sprint backlog",
+                        "Identify delivery risks",
+                        "Coordinate with engineering team",
+                        "Prepare delivery status update"
+                    ]
+                }
+            },
+            "Technical Program Assistant": {
+                "project": {
+                    "title": "Cross-Team Program Tracking Simulation",
+                    "tasks": [
+                        "Track milestones across teams",
+                        "Resolve dependency conflicts",
+                        "Prepare executive progress report"
+                    ]
+                }
+            },
+            "QA & Delivery Analyst": {
+                "project": {
+                    "title": "Release Quality Assurance Simulation",
+                    "tasks": [
+                        "Review test cases",
+                        "Identify release blockers",
+                        "Approve or delay product release"
+                    ]
+                }
+            }
+        }
+    },
+    "Energy & Utilities": {
+        "freemium": True,
+        "roles": {
+            "Energy Data Analyst": {
+                "project": {
+                    "title": "Energy Consumption Analysis Simulation",
+                    "tasks": [
+                        "Analyze consumption data",
+                        "Identify inefficiencies",
+                        "Propose optimization strategy"
+                    ]
+                }
+            },
+            "Power Systems Technician": {
+                "project": {
+                    "title": "Grid Stability Monitoring Simulation",
+                    "tasks": [
+                        "Assess system load",
+                        "Detect fault risks",
+                        "Recommend maintenance actions"
+                    ]
+                }
+            },
+            "Renewable Energy Project Assistant": {
+                "project": {
+                    "title": "Solar Deployment Planning Simulation",
+                    "tasks": [
+                        "Review site feasibility",
+                        "Estimate deployment timeline",
+                        "Prepare stakeholder update"
+                    ]
+                }
+            },
+            "Petroleum Engineer": {
+                "project": {
+                    "title": "Oil Field Production Optimization Simulation",
+                    "tasks": [
+                        "Analyze well performance data",
+                        "Identify production bottlenecks",
+                        "Recommend optimization techniques",
+                        "Prepare technical report"
+                    ]
+                }
+            },
+            "Operations Analyst": {
+                "project": {
+                    "title": "Operational Efficiency Improvement Simulation",
+                    "tasks": [
+                        "Audit operational workflow",
+                        "Identify cost leakages",
+                        "Recommend efficiency improvements"
+                    ]
+                }
+            }
+        }
+    }
+}
+
+LEARNING_RESOURCES = {
+    "Product Associate": [
+        ("Intro to Product Management", "https://www.youtube.com/watch?v=7zLXaJt0b9k")
+    ],
+    "Petroleum Engineer": [
+        ("Intro to Petroleum Engineering", "https://www.youtube.com/watch?v=ZzjM1R5jR1k")
+    ]
+}
+
+# -----------------------------
+# SESSION STATE
+# -----------------------------
+if "step" not in st.session_state:
+    st.session_state.step = "industry"
 
 if "industry" not in st.session_state:
     st.session_state.industry = None
@@ -20,222 +141,106 @@ if "industry" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = None
 
-if "learning_done" not in st.session_state:
-    st.session_state.learning_done = False
-
-if "submission" not in st.session_state:
-    st.session_state.submission = None
-
-if "score" not in st.session_state:
-    st.session_state.score = None
-
+if "completed_tasks" not in st.session_state:
+    st.session_state.completed_tasks = []
 
 # -----------------------------
-# Helpers
-# -----------------------------
-def go_to(stage: int):
-    st.session_state.stage = stage
-
-
-# -----------------------------
-# UI STAGES
+# UI HELPERS
 # -----------------------------
 
-# STAGE 0 — Industry Selection
-if st.session_state.stage == 0:
-    st.title("Select Industry")
+def reset_simulation():
+    st.session_state.step = "industry"
+    st.session_state.industry = None
+    st.session_state.role = None
+    st.session_state.completed_tasks = []
 
-    col1, col2, col3, col4 = st.columns(4)
+def generate_portfolio():
+    buffer = BytesIO()
+    content = f"""
+TURNVE PROJECT PORTFOLIO
 
-    with col1:
-        if st.button("Technology & ICT"):
-            st.session_state.industry = "Technology & ICT"
-            go_to(1)
+Industry: {st.session_state.industry}
+Role: {st.session_state.role}
 
-    with col2:
-        st.button("Financial Services 🔒", disabled=True)
+Project Completed:
+- {current_project['title']}
 
-    with col3:
-        st.button("Retail & E-commerce 🔒", disabled=True)
+Tasks:
+""" + "\n".join(f"- {t}" for t in current_project["tasks"])
 
-    with col4:
-        st.button("Manufacturing 🔒", disabled=True)
+    buffer.write(content.encode("utf-8"))
+    buffer.seek(0)
+    return buffer
 
-    col5, col6, col7, col8 = st.columns(4)
+# -----------------------------
+# APP FLOW
+# -----------------------------
 
-    with col5:
-        st.button("Real Estate 🔒", disabled=True)
+st.title("Turnve – Career Simulation Platform")
+st.caption("Train. Simulate. Build proof of experience.")
 
-    with col6:
-        st.button("Media & Entertainment 🔒", disabled=True)
+# -------- INDUSTRY SELECTION --------
+if st.session_state.step == "industry":
+    st.subheader("Select Industry")
 
-    with col7:
-        st.button("Energy & Utilities 🔒", disabled=True)
+    cols = st.columns(2)
+    industry_list = list(INDUSTRIES.keys())
 
-    with col8:
-        st.button("Healthcare 🔒", disabled=True)
+    for idx, industry in enumerate(industry_list):
+        with cols[idx % 2]:
+            if st.button(industry, use_container_width=True):
+                st.session_state.industry = industry
+                st.session_state.step = "role"
 
+# -------- ROLE SELECTION --------
+elif st.session_state.step == "role":
+    st.subheader(f"Industry: {st.session_state.industry}")
+    st.markdown("### Select Role")
 
-# STAGE 1 — Role Selection
-elif st.session_state.stage == 1:
-    st.header("Technology & ICT — Select Role")
-
-    roles = [
-        "Product Associate",
-        "Software Project Coordinator",
-        "Technical Program Assistant",
-        "QA & Delivery Analyst",
-    ]
+    roles = INDUSTRIES[st.session_state.industry]["roles"]
 
     for role in roles:
-        if st.button(role):
+        if st.button(role, use_container_width=True):
             st.session_state.role = role
-            go_to(2)
+            st.session_state.step = "project"
 
-    st.button("← Back", on_click=lambda: go_to(0))
+    st.button("Restart Simulation", on_click=reset_simulation)
 
+# -------- PROJECT SIMULATION --------
+elif st.session_state.step == "project":
+    role_data = INDUSTRIES[st.session_state.industry]["roles"][st.session_state.role]
+    current_project = role_data["project"]
 
-# STAGE 2 — Role Overview + AI Coach Intro
-elif st.session_state.stage == 2:
-    st.header(st.session_state.role)
+    st.subheader(current_project["title"])
+    st.markdown("### Project Tasks")
 
-    st.subheader("Role Overview")
-    st.write(
-        "This role is designed for individuals with little or no prior experience. "
-        "You will learn by doing real-world projects under guided supervision."
-    )
+    for task in current_project["tasks"]:
+        if task not in st.session_state.completed_tasks:
+            if st.button(f"Complete: {task}", key=task):
+                st.session_state.completed_tasks.append(task)
 
-    st.subheader("AI Coach")
-    st.info(
-        "I’ll guide you through this project step by step. "
-        "If you’re new, I’ll recommend learning resources when needed."
-    )
+    # Learning Assist
+    if st.session_state.role in LEARNING_RESOURCES:
+        st.markdown("### AI Coach – Learning Support")
+        for title, link in LEARNING_RESOURCES[st.session_state.role]:
+            st.markdown(f"- [{title}]({link})")
 
-    if st.button("Proceed to Project"):
-        go_to(3)
+    # Completion
+    if len(st.session_state.completed_tasks) == len(current_project["tasks"]):
+        st.success("Project Completed Successfully!")
+        st.metric("Project Score", "92%")
 
-    st.button("← Back", on_click=lambda: go_to(1))
+        pdf = generate_portfolio()
+        st.download_button(
+            "Download Portfolio (PDF)",
+            data=pdf,
+            file_name="turnve_portfolio.txt",
+            mime="text/plain"
+        )
 
+        st.button(
+            "Share with Employers",
+            on_click=lambda: st.info("Sharable link generated (demo)")
+        )
 
-# STAGE 3 — Project Brief
-elif st.session_state.stage == 3:
-    st.header("New Project Assignment")
-
-    st.markdown(
-        """
-        **Stakeholder Message**
-
-        > You’ve been assigned a project to support a product feature rollout.
-        >
-        > **Goal:** Prepare a short execution plan for launch coordination  
-        > **Timeline:** 7 days  
-        > **Deliverables:** Written plan + risk considerations
-        """
-    )
-
-    if st.button("Start Working"):
-        go_to(4)
-
-    st.button("← Back", on_click=lambda: go_to(2))
-
-
-# STAGE 4 — Learning Trigger
-elif st.session_state.stage == 4:
-    st.header("AI Coach Recommendation")
-
-    st.warning(
-        "If this is your first time in this role, learning the basics first will help."
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("Continue Anyway"):
-            go_to(5)
-
-    with col2:
-        if st.button("Learn First (Recommended)"):
-            go_to(4_1)
-
-
-# STAGE 4.1 — Learning Resources
-elif st.session_state.stage == 4_1:
-    st.header("Learning Resources")
-
-    st.write("Recommended free resources:")
-
-    st.markdown(
-        """
-        - 🎥 [YouTube – Product & Project Fundamentals](https://www.youtube.com)
-        - 📘 [Coursera – Project Management Basics](https://www.coursera.org)
-        - 📗 [Khan Academy – Planning & Execution](https://www.khanacademy.org)
-        - 🎓 [Udemy – Entry-Level PM Skills](https://www.udemy.com)
-        """
-    )
-
-    if st.button("Return to Project"):
-        st.session_state.learning_done = True
-        go_to(5)
-
-
-# STAGE 5 — Hands-on Work
-elif st.session_state.stage == 5:
-    st.header("Work on Your Project")
-
-    st.write("Complete the task below:")
-
-    plan = st.text_area(
-        "Describe your execution approach:",
-        placeholder="Explain how you would approach this project..."
-    )
-
-    if st.button("Submit Work"):
-        st.session_state.submission = plan
-        st.session_state.score = {
-            "Execution": 82,
-            "Communication": 76,
-            "Problem Solving": 80,
-        }
-        go_to(6)
-
-    st.button("← Back", on_click=lambda: go_to(3))
-
-
-# STAGE 6 — AI Coach Feedback
-elif st.session_state.stage == 6:
-    st.header("AI Coach Feedback")
-
-    st.success("Good effort! Here’s how you performed:")
-
-    for skill, value in st.session_state.score.items():
-        st.write(f"**{skill}:** {value}%")
-
-    st.info(
-        "Strengths: Clear execution thinking.\n\n"
-        "Areas to improve: More risk mitigation detail."
-    )
-
-    if st.button("Generate Portfolio"):
-        go_to(7)
-
-
-# STAGE 7 — Portfolio Output
-elif st.session_state.stage == 7:
-    st.header("Your Turnve Portfolio")
-
-    st.markdown(
-        f"""
-        **Industry:** {st.session_state.industry}  
-        **Role:** {st.session_state.role}  
-
-        **Completed Project:** Product Launch Coordination  
-        **Skills Validated:** Execution, Communication, Problem Solving
-        """
-    )
-
-    st.success("Portfolio ready for employers.")
-
-    st.button("Download Portfolio (PDF)")
-    st.button("Share with Employers")
-
-    st.button("Restart Demo", on_click=lambda: go_to(0))
+    st.button("Restart Simulation", on_click=reset_simulation)
