@@ -1,189 +1,241 @@
 import streamlit as st
-from copy import deepcopy
 
-# -------------------------------------------------
-# PAGE CONFIG
-# -------------------------------------------------
+# -----------------------------
+# Page config
+# -----------------------------
 st.set_page_config(
-    page_title="TURNVE – Career Simulation Demo",
-    page_icon="🧠",
-    layout="centered",
+    page_title="Turnve – Career Simulation Demo",
+    layout="wide",
 )
 
-st.title("TURNVE – Career Simulation")
-st.caption("Learn by doing real work, not watching slides.")
+# -----------------------------
+# Session state initialization
+# -----------------------------
+if "stage" not in st.session_state:
+    st.session_state.stage = 0
 
-# -------------------------------------------------
-# SESSION STATE INITIALIZATION (CRITICAL)
-# -------------------------------------------------
-if "step" not in st.session_state:
-    st.session_state.step = 0
+if "industry" not in st.session_state:
+    st.session_state.industry = None
 
-if "simulation_id" not in st.session_state:
-    st.session_state.simulation_id = None
+if "role" not in st.session_state:
+    st.session_state.role = None
 
-if "state" not in st.session_state:
-    st.session_state.state = None
+if "learning_done" not in st.session_state:
+    st.session_state.learning_done = False
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+if "submission" not in st.session_state:
+    st.session_state.submission = None
 
-if "feedback" not in st.session_state:
-    st.session_state.feedback = None
-
-# -------------------------------------------------
-# MOCK SCENARIO (LOCAL DEMO SAFE)
-# -------------------------------------------------
-SCENARIO = {
-    "id": "technology_product_associate",
-    "title": "Feature Delivery Under Pressure",
-    "initial_state": {
-        "deadline_days": 14,
-        "risk": 0.3,
-        "stakeholder_trust": 0.6,
-    },
-    "actions": {
-        "delivery_decision": {
-            "prompt": "The engineering team requests more time to ensure quality. What do you do?",
-            "choices": {
-                "accept_immediately": {
-                    "label": "Accept the request immediately",
-                    "effects": {"deadline_days": -3, "risk": -0.1, "stakeholder_trust": 0.1},
-                    "feedback": "Quality improves, but leadership is concerned about delays."
-                },
-                "add_engineers": {
-                    "label": "Add more engineers to speed delivery",
-                    "effects": {"deadline_days": 1, "risk": 0.15, "stakeholder_trust": -0.05},
-                    "feedback": "Delivery is faster, but coordination risk increases."
-                }
-            }
-        }
-    }
-}
-
-# -------------------------------------------------
-# HELPERS
-# -------------------------------------------------
-def initialize_simulation():
-    st.session_state.simulation_id = SCENARIO["id"]
-    st.session_state.state = deepcopy(SCENARIO["initial_state"])
-    st.session_state.history = []
-    st.session_state.feedback = None
-    st.session_state.step = 1
+if "score" not in st.session_state:
+    st.session_state.score = None
 
 
-def restart_simulation():
-    st.session_state.clear()
-    st.rerun()
+# -----------------------------
+# Helpers
+# -----------------------------
+def go_to(stage: int):
+    st.session_state.stage = stage
 
 
-def apply_action(action_id, choice_key):
-    if st.session_state.state is None:
-        st.warning("Simulation not started.")
-        return
+# -----------------------------
+# UI STAGES
+# -----------------------------
 
-    action = SCENARIO["actions"][action_id]
-    outcome = action["choices"][choice_key]
+# STAGE 0 — Industry Selection
+if st.session_state.stage == 0:
+    st.title("Select Industry")
 
-    new_state = deepcopy(st.session_state.state)
-    for key, delta in outcome["effects"].items():
-        new_state[key] = round(new_state.get(key, 0) + delta, 2)
+    col1, col2, col3, col4 = st.columns(4)
 
-    st.session_state.state = new_state
-    st.session_state.feedback = outcome["feedback"]
-    st.session_state.history.append(
-        {"action": action_id, "choice": choice_key}
+    with col1:
+        if st.button("Technology & ICT"):
+            st.session_state.industry = "Technology & ICT"
+            go_to(1)
+
+    with col2:
+        st.button("Financial Services 🔒", disabled=True)
+
+    with col3:
+        st.button("Retail & E-commerce 🔒", disabled=True)
+
+    with col4:
+        st.button("Manufacturing 🔒", disabled=True)
+
+    col5, col6, col7, col8 = st.columns(4)
+
+    with col5:
+        st.button("Real Estate 🔒", disabled=True)
+
+    with col6:
+        st.button("Media & Entertainment 🔒", disabled=True)
+
+    with col7:
+        st.button("Energy & Utilities 🔒", disabled=True)
+
+    with col8:
+        st.button("Healthcare 🔒", disabled=True)
+
+
+# STAGE 1 — Role Selection
+elif st.session_state.stage == 1:
+    st.header("Technology & ICT — Select Role")
+
+    roles = [
+        "Product Associate",
+        "Software Project Coordinator",
+        "Technical Program Assistant",
+        "QA & Delivery Analyst",
+    ]
+
+    for role in roles:
+        if st.button(role):
+            st.session_state.role = role
+            go_to(2)
+
+    st.button("← Back", on_click=lambda: go_to(0))
+
+
+# STAGE 2 — Role Overview + AI Coach Intro
+elif st.session_state.stage == 2:
+    st.header(st.session_state.role)
+
+    st.subheader("Role Overview")
+    st.write(
+        "This role is designed for individuals with little or no prior experience. "
+        "You will learn by doing real-world projects under guided supervision."
     )
 
+    st.subheader("AI Coach")
+    st.info(
+        "I’ll guide you through this project step by step. "
+        "If you’re new, I’ll recommend learning resources when needed."
+    )
 
-# -------------------------------------------------
-# STEP 0 – DASHBOARD
-# -------------------------------------------------
-if st.session_state.step == 0:
-    st.subheader("Dashboard")
+    if st.button("Proceed to Project"):
+        go_to(3)
 
-    st.info("This feels like work — not a course.")
+    st.button("← Back", on_click=lambda: go_to(1))
 
-    if st.button("▶ Start Solo Simulation"):
-        initialize_simulation()
 
-# -------------------------------------------------
-# STEP 1 – PROJECT BRIEF
-# -------------------------------------------------
-elif st.session_state.step == 1:
-    st.subheader("📩 Project Brief")
+# STAGE 3 — Project Brief
+elif st.session_state.stage == 3:
+    st.header("New Project Assignment")
 
     st.markdown(
         """
-        **You’ve been assigned a project by a stakeholder.**
+        **Stakeholder Message**
 
-        **Goal:** Deliver a new feature without harming trust or quality  
-        **Timeline:** 2 weeks  
-        **Context:** Users are waiting, leadership wants speed
+        > You’ve been assigned a project to support a product feature rollout.
+        >
+        > **Goal:** Prepare a short execution plan for launch coordination  
+        > **Timeline:** 7 days  
+        > **Deliverables:** Written plan + risk considerations
         """
     )
 
-    if st.button("Continue"):
-        st.session_state.step = 2
+    if st.button("Start Working"):
+        go_to(4)
 
-# -------------------------------------------------
-# STEP 2 – DECISION MAKING
-# -------------------------------------------------
-elif st.session_state.step == 2:
-    action = SCENARIO["actions"]["delivery_decision"]
+    st.button("← Back", on_click=lambda: go_to(2))
 
-    st.subheader("🧩 Decision Point")
-    st.write(action["prompt"])
 
-    for choice_key, choice in action["choices"].items():
-        if st.button(choice["label"], key=choice_key):
-            apply_action("delivery_decision", choice_key)
+# STAGE 4 — Learning Trigger
+elif st.session_state.stage == 4:
+    st.header("AI Coach Recommendation")
 
-    if st.session_state.feedback:
-        st.success(st.session_state.feedback)
-        st.session_state.step = 3
+    st.warning(
+        "If this is your first time in this role, learning the basics first will help."
+    )
 
-# -------------------------------------------------
-# STEP 3 – AI COACH FEEDBACK
-# -------------------------------------------------
-elif st.session_state.step == 3:
-    st.subheader("🤖 AI Coach Feedback")
+    col1, col2 = st.columns(2)
 
-    state = st.session_state.state
+    with col1:
+        if st.button("Continue Anyway"):
+            go_to(5)
 
-    st.write("### Performance Snapshot")
-    st.metric("Deadline Days", state["deadline_days"])
-    st.metric("Risk Level", state["risk"])
-    st.metric("Stakeholder Trust", state["stakeholder_trust"])
+    with col2:
+        if st.button("Learn First (Recommended)"):
+            go_to(4_1)
+
+
+# STAGE 4.1 — Learning Resources
+elif st.session_state.stage == 4_1:
+    st.header("Learning Resources")
+
+    st.write("Recommended free resources:")
+
+    st.markdown(
+        """
+        - 🎥 [YouTube – Product & Project Fundamentals](https://www.youtube.com)
+        - 📘 [Coursera – Project Management Basics](https://www.coursera.org)
+        - 📗 [Khan Academy – Planning & Execution](https://www.khanacademy.org)
+        - 🎓 [Udemy – Entry-Level PM Skills](https://www.udemy.com)
+        """
+    )
+
+    if st.button("Return to Project"):
+        st.session_state.learning_done = True
+        go_to(5)
+
+
+# STAGE 5 — Hands-on Work
+elif st.session_state.stage == 5:
+    st.header("Work on Your Project")
+
+    st.write("Complete the task below:")
+
+    plan = st.text_area(
+        "Describe your execution approach:",
+        placeholder="Explain how you would approach this project..."
+    )
+
+    if st.button("Submit Work"):
+        st.session_state.submission = plan
+        st.session_state.score = {
+            "Execution": 82,
+            "Communication": 76,
+            "Problem Solving": 80,
+        }
+        go_to(6)
+
+    st.button("← Back", on_click=lambda: go_to(3))
+
+
+# STAGE 6 — AI Coach Feedback
+elif st.session_state.stage == 6:
+    st.header("AI Coach Feedback")
+
+    st.success("Good effort! Here’s how you performed:")
+
+    for skill, value in st.session_state.score.items():
+        st.write(f"**{skill}:** {value}%")
 
     st.info(
-        "You balanced trade-offs under pressure. "
-        "Strong PMs understand that speed, risk, and trust move together."
+        "Strengths: Clear execution thinking.\n\n"
+        "Areas to improve: More risk mitigation detail."
     )
 
-    if st.button("Finish Simulation"):
-        st.session_state.step = 4
+    if st.button("Generate Portfolio"):
+        go_to(7)
 
-# -------------------------------------------------
-# STEP 4 – PORTFOLIO PROOF
-# -------------------------------------------------
-elif st.session_state.step == 4:
-    st.subheader("📁 Portfolio Proof")
 
-    st.success("Simulation Completed!")
+# STAGE 7 — Portfolio Output
+elif st.session_state.stage == 7:
+    st.header("Your Turnve Portfolio")
 
     st.markdown(
-        """
-        **Project:** Feature Delivery Under Pressure  
-        **Role:** Product Associate  
-        **Skills Validated:**  
-        - Decision Making  
-        - Risk Awareness  
-        - Stakeholder Management
+        f"""
+        **Industry:** {st.session_state.industry}  
+        **Role:** {st.session_state.role}  
+
+        **Completed Project:** Product Launch Coordination  
+        **Skills Validated:** Execution, Communication, Problem Solving
         """
     )
 
-    st.caption("This project can now appear on your portfolio.")
+    st.success("Portfolio ready for employers.")
 
-    if st.button("🔁 Restart Simulation"):
-        restart_simulation()
+    st.button("Download Portfolio (PDF)")
+    st.button("Share with Employers")
+
+    st.button("Restart Demo", on_click=lambda: go_to(0))
