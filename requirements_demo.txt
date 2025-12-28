@@ -1,13 +1,1 @@
-# Streamlit demo – lightweight, deployable on Streamlit Cloud
-
 streamlit
-
-# Core Python utilities
-pydantic==2.5.0
-typing-extensions>=4.8.0
-
-# HTTP (if calling backend APIs later)
-httpx==0.25.2
-
-# File & JSON handling
-python-dotenv==1.0.0
