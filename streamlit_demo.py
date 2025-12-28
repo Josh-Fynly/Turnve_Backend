@@ -1,199 +1,189 @@
 import streamlit as st
-from typing import Dict, Any
+from copy import deepcopy
 
-# =========================
-# Page Config
-# =========================
+# -------------------------------------------------
+# PAGE CONFIG
+# -------------------------------------------------
 st.set_page_config(
-    page_title="Turnve – Career Simulation Demo",
+    page_title="TURNVE – Career Simulation Demo",
     page_icon="🧠",
     layout="centered",
 )
 
-# =========================
-# Scenario Definition
-# =========================
+st.title("TURNVE – Career Simulation")
+st.caption("Learn by doing real work, not watching slides.")
+
+# -------------------------------------------------
+# SESSION STATE INITIALIZATION (CRITICAL)
+# -------------------------------------------------
+if "step" not in st.session_state:
+    st.session_state.step = 0
+
+if "simulation_id" not in st.session_state:
+    st.session_state.simulation_id = None
+
+if "state" not in st.session_state:
+    st.session_state.state = None
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "feedback" not in st.session_state:
+    st.session_state.feedback = None
+
+# -------------------------------------------------
+# MOCK SCENARIO (LOCAL DEMO SAFE)
+# -------------------------------------------------
 SCENARIO = {
-    "industry": "Technology & ICT",
-    "role": "Product Associate",
+    "id": "technology_product_associate",
+    "title": "Feature Delivery Under Pressure",
     "initial_state": {
-        "deadline_days": 10,
+        "deadline_days": 14,
         "risk": 0.3,
         "stakeholder_trust": 0.6,
     },
     "actions": {
-        "scope_change": {
-            "label": "How do you handle a late feature request?",
+        "delivery_decision": {
+            "prompt": "The engineering team requests more time to ensure quality. What do you do?",
             "choices": {
-                "accept": {
+                "accept_immediately": {
                     "label": "Accept the request immediately",
-                    "effects": {
-                        "deadline_days": -4,
-                        "risk": 0.2,
-                        "stakeholder_trust": 0.1,
-                    },
-                    "feedback": "You pleased the stakeholder but increased delivery risk.",
+                    "effects": {"deadline_days": -3, "risk": -0.1, "stakeholder_trust": 0.1},
+                    "feedback": "Quality improves, but leadership is concerned about delays."
                 },
-                "negotiate": {
-                    "label": "Negotiate scope and timeline",
-                    "effects": {
-                        "deadline_days": -1,
-                        "risk": -0.1,
-                        "stakeholder_trust": 0.05,
-                    },
-                    "feedback": "You balanced delivery pressure with stakeholder alignment.",
-                },
-            },
-        },
-        "resource_tradeoff": {
-            "label": "How do you reallocate team resources?",
-            "choices": {
                 "add_engineers": {
                     "label": "Add more engineers to speed delivery",
-                    "effects": {
-                        "deadline_days": 4,
-                        "risk": 0.15,
-                        "stakeholder_trust": -0.1,
-                    },
-                    "feedback": "Delivery improved, but coordination risk increased.",
-                },
-                "maintain_team": {
-                    "label": "Keep the current team size",
-                    "effects": {
-                        "deadline_days": -2,
-                        "risk": -0.05,
-                        "stakeholder_trust": 0.05,
-                    },
-                    "feedback": "Stability improved, but timeline pressure increased.",
-                },
-            },
-        },
-    },
+                    "effects": {"deadline_days": 1, "risk": 0.15, "stakeholder_trust": -0.05},
+                    "feedback": "Delivery is faster, but coordination risk increases."
+                }
+            }
+        }
+    }
 }
 
-# =========================
-# Helper Functions
-# =========================
-def initialize_state() -> Dict[str, Any]:
-    return SCENARIO["initial_state"].copy()
+# -------------------------------------------------
+# HELPERS
+# -------------------------------------------------
+def initialize_simulation():
+    st.session_state.simulation_id = SCENARIO["id"]
+    st.session_state.state = deepcopy(SCENARIO["initial_state"])
+    st.session_state.history = []
+    st.session_state.feedback = None
+    st.session_state.step = 1
 
 
-def apply_action(state: Dict[str, Any], action_id: str, choice: str):
-    new_state = state.copy()
+def restart_simulation():
+    st.session_state.clear()
+    st.experimental_rerun()
+
+
+def apply_action(action_id, choice_key):
+    if st.session_state.state is None:
+        st.warning("Simulation not started.")
+        return
+
     action = SCENARIO["actions"][action_id]
-    outcome = action["choices"][choice]
+    outcome = action["choices"][choice_key]
 
+    new_state = deepcopy(st.session_state.state)
     for key, delta in outcome["effects"].items():
         new_state[key] = round(new_state.get(key, 0) + delta, 2)
 
-    return new_state, outcome["feedback"]
-
-
-def generate_score(state: Dict[str, Any]) -> Dict[str, float]:
-    score = {
-        "execution": max(0, min(1, 1 - abs(state["deadline_days"]) / 10)),
-        "risk_management": max(0, 1 - state["risk"]),
-        "stakeholder_management": state["stakeholder_trust"],
-    }
-    score["overall"] = round(sum(score.values()) / len(score), 2)
-    return score
-
-
-def generate_coach_summary(score: Dict[str, float]) -> str:
-    insights = []
-
-    if score["risk_management"] < 0.4:
-        insights.append("Your decisions increased delivery risk.")
-    else:
-        insights.append("You demonstrated strong risk awareness.")
-
-    if score["stakeholder_management"] > 0.6:
-        insights.append("Stakeholder trust was well managed.")
-    else:
-        insights.append("Stakeholder alignment needs improvement.")
-
-    return (
-        f"Overall performance score: {score['overall']}. "
-        + " ".join(insights)
+    st.session_state.state = new_state
+    st.session_state.feedback = outcome["feedback"]
+    st.session_state.history.append(
+        {"action": action_id, "choice": choice_key}
     )
 
-# =========================
-# Session State
-# =========================
-if "state" not in st.session_state:
-    st.session_state.state = initialize_state()
-    st.session_state.step = 1
-    st.session_state.feedback = ""
 
-# =========================
-# UI
-# =========================
-st.title("🧠 Turnve Career Simulation")
-st.caption("Technology & ICT · Product Associate")
+# -------------------------------------------------
+# STEP 0 – DASHBOARD
+# -------------------------------------------------
+if st.session_state.step == 0:
+    st.subheader("Dashboard")
 
-st.markdown("### 📌 Current Project Brief")
-st.info(
-    "You’ve been assigned to support a product rollout under tight timelines. "
-    "Your decisions will affect delivery, risk, and stakeholder trust."
-)
+    st.info("This feels like work — not a course.")
 
-# =========================
-# Decision Flow
-# =========================
-if st.session_state.step <= 2:
-    action_keys = list(SCENARIO["actions"].keys())
-    action_id = action_keys[st.session_state.step - 1]
-    action = SCENARIO["actions"][action_id]
+    if st.button("▶ Start Solo Simulation"):
+        initialize_simulation()
 
-    st.markdown(f"### 🧠 Decision {st.session_state.step}")
-    choice = st.radio(
-        action["label"],
-        options=list(action["choices"].keys()),
-        format_func=lambda x: action["choices"][x]["label"],
+# -------------------------------------------------
+# STEP 1 – PROJECT BRIEF
+# -------------------------------------------------
+elif st.session_state.step == 1:
+    st.subheader("📩 Project Brief")
+
+    st.markdown(
+        """
+        **You’ve been assigned a project by a stakeholder.**
+
+        **Goal:** Deliver a new feature without harming trust or quality  
+        **Timeline:** 2 weeks  
+        **Context:** Users are waiting, leadership wants speed
+        """
     )
 
-    if st.button("Make Decision"):
-        new_state, feedback = apply_action(
-            st.session_state.state, action_id, choice
-        )
-        st.session_state.state = new_state
-        st.session_state.feedback = feedback
-        st.session_state.step += 1
-        st.experimental_rerun()
+    if st.button("Continue"):
+        st.session_state.step = 2
+
+# -------------------------------------------------
+# STEP 2 – DECISION MAKING
+# -------------------------------------------------
+elif st.session_state.step == 2:
+    action = SCENARIO["actions"]["delivery_decision"]
+
+    st.subheader("🧩 Decision Point")
+    st.write(action["prompt"])
+
+    for choice_key, choice in action["choices"].items():
+        if st.button(choice["label"], key=choice_key):
+            apply_action("delivery_decision", choice_key)
 
     if st.session_state.feedback:
         st.success(st.session_state.feedback)
+        st.session_state.step = 3
 
-# =========================
-# Results & Portfolio
-# =========================
-else:
-    st.divider()
-    st.markdown("### 📊 Simulation Results")
+# -------------------------------------------------
+# STEP 3 – AI COACH FEEDBACK
+# -------------------------------------------------
+elif st.session_state.step == 3:
+    st.subheader("🤖 AI Coach Feedback")
 
-    score = generate_score(st.session_state.state)
-    st.metric("Overall Score", score["overall"])
+    state = st.session_state.state
 
-    st.markdown("### 🧑‍🏫 AI Coach Feedback")
-    st.write(generate_coach_summary(score))
+    st.write("### Performance Snapshot")
+    st.metric("Deadline Days", state["deadline_days"])
+    st.metric("Risk Level", state["risk"])
+    st.metric("Stakeholder Trust", state["stakeholder_trust"])
 
-    st.divider()
-    st.markdown("### 📁 Portfolio Proof")
-
-    portfolio = {
-        "industry": SCENARIO["industry"],
-        "role": SCENARIO["role"],
-        "final_state": st.session_state.state,
-        "score": score,
-    }
-
-    st.download_button(
-        label="Download Portfolio Proof",
-        data=str(portfolio),
-        file_name="turnve_portfolio.json",
-        mime="application/json",
+    st.info(
+        "You balanced trade-offs under pressure. "
+        "Strong PMs understand that speed, risk, and trust move together."
     )
 
-    if st.button("Restart Simulation"):
-        st.session_state.clear()
-        st.experimental_rerun()
+    if st.button("Finish Simulation"):
+        st.session_state.step = 4
+
+# -------------------------------------------------
+# STEP 4 – PORTFOLIO PROOF
+# -------------------------------------------------
+elif st.session_state.step == 4:
+    st.subheader("📁 Portfolio Proof")
+
+    st.success("Simulation Completed!")
+
+    st.markdown(
+        """
+        **Project:** Feature Delivery Under Pressure  
+        **Role:** Product Associate  
+        **Skills Validated:**  
+        - Decision Making  
+        - Risk Awareness  
+        - Stakeholder Management
+        """
+    )
+
+    st.caption("This project can now appear on your portfolio.")
+
+    if st.button("🔁 Restart Simulation"):
+        restart_simulation()
