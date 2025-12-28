@@ -1,4 +1,6 @@
 streamlit
+fpdf
+
 
 # FastAPI and ASGI
 fastapi==0.104.1
