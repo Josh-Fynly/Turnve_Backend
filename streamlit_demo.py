@@ -1,36 +1,40 @@
 import streamlit as st
-import time
-import random
 from datetime import datetime
 from fpdf import FPDF
 
-# -----------------------------
-# CONFIG & PAGE SETUP
-# -----------------------------
+# =====================================================
+# CONFIG
+# =====================================================
 st.set_page_config(
     page_title="Turnve – Career Simulation",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# -----------------------------
-# TURNVE ECONOMY CONFIG
-# -----------------------------
-TVC_EXCHANGE_RATE = 0.5  # 1 TvC = $0.5
-COINS_PER_30_MIN = 100   # 30 mins = 100 TvC
-PREMIUM_ACCESS_COST_USD = 3.00
-PREMIUM_ACCESS_COST_TVC = int(PREMIUM_ACCESS_COST_USD / TVC_EXCHANGE_RATE) # 6 TvC
+# =====================================================
+# SESSION STATE
+# =====================================================
+defaults = {
+    "step": "industry",
+    "industry": None,
+    "role": None,
+    "project": None,
+    "assignment_done": False,
+    "score": None,
+    "tvc": 0
+}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
-# -----------------------------
-# DATABASE: INDUSTRIES, ROLES, PROJECTS
-# -----------------------------
-
-INDUSTRIES_LIST = [
+# =====================================================
+# INDUSTRIES & ACCESS
+# =====================================================
+INDUSTRIES = [
     "Technology & ICT", "Financial Services", "Retail & E-commerce", "Manufacturing",
     "Real Estate", "Media & Entertainment", "Energy & Utilities", "Healthcare"
 ]
 
-INDUSTRY_CONFIG = {
+INDUSTRY_ACCESS = {
     "Technology & ICT": {"freemium": True},
     "Energy & Utilities": {"freemium": True},
     "Financial Services": {"freemium": False},
@@ -41,362 +45,191 @@ INDUSTRY_CONFIG = {
     "Healthcare": {"freemium": False},
 }
 
-# Expanded Data Structure with Embedded Learning
-# Note: For demo brevity, I've fully populated the Freemium ones. 
-# In a full app, all would be populated.
-FULL_DB = {
-    "Energy & Utilities": {
-        "roles": [
-            {
-                "title": "Petroleum Engineer",
-                "description": "Optimize extraction and analyze well performance.",
-                "project": {
-                    "title": "Oil Field Production Optimization",
-                    "goal": "Analyze data to increase output while maintaining safety.",
-                    "tasks": [
-                        {
-                            "name": "Analyze well performance data",
-                            "prompt": "Review the provided pressure and flow rate datasets. Identify anomalies indicating blockage.",
-                            "video_url": "https://www.youtube.com/watch?v=I7CQWgZInq4", # Intro to Petroleum Engineering
-                            "resource_site": "Coursera (Energy Track)",
-                            "min_score": 80
-                        },
-                        {
-                            "name": "Identify production bottlenecks",
-                            "prompt": "Based on your analysis, list the top 3 choke points in the pipeline infrastructure.",
-                            "video_url": "https://www.youtube.com/watch?v=ZzjM1R5jR1k", 
-                            "resource_site": "Udemy (Oil & Gas)",
-                            "min_score": 80
-                        },
-                        {
-                            "name": "Recommend Optimization Techniques",
-                            "prompt": "Propose an intervention strategy (e.g., Acidizing, Hydraulic Fracturing) for Well #4.",
-                            "video_url": "https://www.youtube.com/watch?v=eAUGSZg3jXA",
-                            "resource_site": "DigitalDefynd",
-                            "min_score": 80
-                        }
-                    ]
-                }
-            },
-            {
-                "title": "Energy Data Analyst",
-                "description": "Interpret grid data to improve efficiency.",
-                "project": {
-                    "title": "Grid Consumption Analysis",
-                    "goal": "Reduce waste by 15% through data analysis.",
-                    "tasks": [
-                        {"name": "Audit Grid Load", "prompt": "Identify peak load times.", "video_url": "https://www.youtube.com/watch?v=f7G870W_2TQ", "resource_site": "Khan Academy", "min_score": 80},
-                        {"name": "Forecast Demand", "prompt": "Create a 7-day demand forecast.", "video_url": "https://www.youtube.com/watch?v=f7G870W_2TQ", "resource_site": "Coursera", "min_score": 80},
-                    ]
-                }
-            },
-            {
-                "title": "Renewable Systems Tech",
-                "description": "Manage solar and wind farm deployments.",
-                "project": {
-                    "title": "Solar Field Deployment",
-                    "goal": "Plan the layout for a 50-acre solar farm.",
-                    "tasks": [
-                        {"name": "Site Feasibility Study", "prompt": "Assess soil and sun hours.", "video_url": "https://www.youtube.com/watch?v=xKxrkht7CpY", "resource_site": "Mindluster", "min_score": 80},
-                    ]
-                }
-            }
-        ]
-    },
+PAID_COST_TVC = 6  # $3 equivalent
+
+# =====================================================
+# CORE SIMULATION DATA
+# =====================================================
+SIMULATION = {
     "Technology & ICT": {
-        "roles": [
-            {
-                "title": "Product Associate",
-                "description": "Manage feature lifecycles and user requirements.",
-                "project": {
-                    "title": "Product Feature Launch Simulation",
-                    "goal": "Launch 'Dark Mode' for the app.",
-                    "tasks": [
-                        {
-                            "name": "Analyze user feedback",
-                            "prompt": "Summarize the top 3 user complaints regarding eye strain.",
-                            "video_url": "https://www.youtube.com/watch?v=ravLfnYuqmA",
-                            "resource_site": "Coursera",
-                            "min_score": 80
-                        },
-                        {
-                            "name": "Define Success Metrics (KPIs)",
-                            "prompt": "What 3 metrics will indicate this launch is successful?",
-                            "video_url": "https://www.youtube.com/watch?v=3KaqaF8YciU",
-                            "resource_site": "Udemy",
-                            "min_score": 80
-                        }
-                    ]
+        "roles": {
+            "Software Engineer": {
+                "project": "Dark Mode Feature Implementation",
+                "assignment": {
+                    "title": "Implement Dark Mode",
+                    "instruction": (
+                        "Explain how you would implement Dark Mode in a web app.\n"
+                        "Mention CSS variables, theme toggling, and persistence."
+                    ),
+                    "keywords": ["css", "theme", "toggle", "dark", "local storage"]
                 }
             },
-            {
-                "title": "Software Engineer",
-                "description": "Build scalable software solutions.",
-                "project": {
-                    "title": "Auth System Implementation",
-                    "goal": "Build a secure login API.",
-                    "tasks": [
-                        {"name": "Design DB Schema", "prompt": "Submit the SQL for the User table.", "video_url": "https://www.youtube.com/watch?v=nF65aNTc4Mk", "resource_site": "YouTube/FreeCodeCamp", "min_score": 80},
-                        {"name": "Write Unit Tests", "prompt": "Write a test case for invalid password entry.", "video_url": "https://www.youtube.com/watch?v=IHx9ImEMuzQ", "resource_site": "Khan Academy", "min_score": 80}
-                    ]
-                }
-            },
-            {
-                "title": "UX Designer",
-                "description": "Design intuitive user interfaces.",
-                "project": {
-                    "title": "Mobile App Redesign",
-                    "goal": "Improve navigation flow.",
-                    "tasks": [
-                        {"name": "Wireframing", "prompt": "Create a low-fidelity wireframe.", "video_url": "https://www.youtube.com/watch?v=c9Wg6Cb_YlU", "resource_site": "DigitalDefynd", "min_score": 80},
-                    ]
+            "Product Associate": {
+                "project": "Product Feature Launch",
+                "assignment": {
+                    "title": "Define Feature Success",
+                    "instruction": (
+                        "Describe how you would analyze feedback and define KPIs "
+                        "for launching a Dark Mode feature."
+                    ),
+                    "keywords": ["kpi", "feedback", "adoption", "retention"]
                 }
             }
-        ]
+        }
+    },
+    "Energy & Utilities": {
+        "roles": {
+            "Petroleum Engineer": {
+                "project": "Oil Field Optimization",
+                "assignment": {
+                    "title": "Analyze Well Performance Data",
+                    "instruction": (
+                        "Explain how you would analyze well pressure, flow rate, "
+                        "and decline trends to identify bottlenecks."
+                    ),
+                    "keywords": ["pressure", "flow", "decline", "bottleneck"]
+                }
+            },
+            "Energy Data Analyst": {
+                "project": "Consumption Optimization",
+                "assignment": {
+                    "title": "Identify Energy Inefficiencies",
+                    "instruction": (
+                        "Describe how consumption data can reveal inefficiencies "
+                        "and reduce operational costs."
+                    ),
+                    "keywords": ["consumption", "trend", "inefficiency", "optimization"]
+                }
+            }
+        }
     }
 }
 
-# -----------------------------
-# SESSION STATE INITIALIZATION
-# -----------------------------
-defaults = {
-    "step": "industry",
-    "wallet_tvc": 0,
-    "time_spent_mins": 0,
-    "unlocked_industries": [],
-    "industry": None,
-    "role_obj": None, # Holds the full role object
-    "completed_tasks": [], # List of task names
-    "current_task_index": 0
-}
+# =====================================================
+# AI COACH – SCORING
+# =====================================================
+def score_submission(text, keywords):
+    score = sum(20 for k in keywords if k in text.lower())
+    return min(score, 100)
 
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
-# -----------------------------
-# HELPER FUNCTIONS
-# -----------------------------
-
-def add_time(minutes):
-    """Simulate time passing and earning coins"""
-    st.session_state.time_spent_mins += minutes
-    # 30 mins = 100 TvC -> 1 min = 3.33 TvC
-    earned = int(minutes * (COINS_PER_30_MIN / 30))
-    st.session_state.wallet_tvc += earned
-    st.toast(f"⏱️ {minutes} mins passed. You earned {earned} TvC!")
-
-def unlock_industry(ind_name):
-    if st.session_state.wallet_tvc >= PREMIUM_ACCESS_COST_TVC:
-        st.session_state.wallet_tvc -= PREMIUM_ACCESS_COST_TVC
-        st.session_state.unlocked_industries.append(ind_name)
-        st.toast(f"🔓 Successfully unlocked {ind_name}!")
-        st.rerun()
-    else:
-        st.error(f"Insufficient TvC! You need {PREMIUM_ACCESS_COST_TVC} TvC ($3.00 value).")
-
-def assess_submission(submission_text):
-    """Simulate AI Coach Grading"""
-    if len(submission_text) < 10:
-        return 0, "Submission too short. Please elaborate."
-    
-    # Mock grading logic: Random score between 60 and 100 for demo
-    score = random.randint(65, 100) 
-    
-    if score >= 80:
-        feedback = "Excellent work. Your approach aligns with industry standards."
-    else:
-        feedback = "Does not meet the 80% threshold. Review the learning material and try again."
-        
-    return score, feedback
-
-def generate_pdf():
+# =====================================================
+# PDF PORTFOLIO
+# =====================================================
+def generate_portfolio():
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 20)
-    pdf.cell(0, 15, "Turnve Proof of Experience", ln=True, align='C')
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Turnve – Proof of Experience", ln=True, align="C")
     pdf.ln(10)
-    
-    pdf.set_font("Arial", '', 12)
-    pdf.cell(0, 10, f"Candidate ID: TRN-{random.randint(1000,9999)}", ln=True)
-    pdf.cell(0, 10, f"Role: {st.session_state.role_obj['title']}", ln=True)
-    pdf.cell(0, 10, f"Industry: {st.session_state.industry}", ln=True)
-    pdf.cell(0, 10, f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
+
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 8, f"Industry: {st.session_state.industry}", ln=True)
+    pdf.cell(0, 8, f"Role: {st.session_state.role}", ln=True)
+    pdf.cell(0, 8, f"Score: {st.session_state.score}%", ln=True)
+    pdf.cell(0, 8, f"Date: {datetime.now().date()}", ln=True)
+
     pdf.ln(10)
-    
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "Verified Skills & Projects", ln=True)
-    pdf.set_font("Arial", '', 12)
-    
-    for task in st.session_state.completed_tasks:
-        pdf.cell(0, 10, f"- {task} [Passed Assessment]", ln=True)
-        
-    pdf.ln(20)
-    pdf.set_font("Arial", 'I', 10)
-    pdf.cell(0, 10, "Certified by Turnve AI Coach", ln=True, align='C')
-    
+    pdf.set_font("Arial", "I", 10)
+    pdf.multi_cell(
+        0, 8,
+        "This document certifies that the holder has completed "
+        "a simulation-based project assessed by Turnve AI Coach."
+    )
+
     return pdf.output(dest="S").encode("latin-1")
 
-# -----------------------------
-# SIDEBAR: WALLET & NAV
-# -----------------------------
+# =====================================================
+# SIDEBAR – COINS
+# =====================================================
 with st.sidebar:
-    st.title("Turnve Wallet")
-    
-    c1, c2 = st.columns(2)
-    c1.metric("TvC Coins", f"{st.session_state.wallet_tvc}")
-    c2.metric("Est. Value", f"${st.session_state.wallet_tvc * TVC_EXCHANGE_RATE:.2f}")
-    
-    st.caption(f"Rate: {COINS_PER_30_MIN} TvC / 30 mins")
-    
-    st.divider()
-    
-    # Simulation Tool for Demo Users
-    st.subheader("Dev Tools (Simulation)")
-    if st.button("Simulate 30 Mins Work"):
-        add_time(30)
-    if st.button("Simulate 60 Mins Work"):
-        add_time(60)
+    st.header("Turnve Coins (TvC)")
+    st.metric("Balance", st.session_state.tvc)
 
-    st.divider()
-    if st.button("Reset Demo"):
-        for k in defaults.keys():
-            del st.session_state[k]
-        st.rerun()
+    if st.button("Simulate 30 mins learning (+100 TvC)"):
+        st.session_state.tvc += 100
 
-# -----------------------------
-# MAIN APP
-# -----------------------------
-st.title("Turnve Career Simulation")
+    if st.button("Simulate 60 mins learning (+200 TvC)"):
+        st.session_state.tvc += 200
 
-# =======================
-# STEP 1: INDUSTRY GRID
-# =======================
+# =====================================================
+# MAIN FLOW
+# =====================================================
+st.title("Turnve – Career Simulation Platform")
+st.caption("Train. Simulate. Prove experience.")
+
+# ---------------- INDUSTRY SELECTION ----------------
 if st.session_state.step == "industry":
     st.subheader("Select Industry")
-    
-    # 4x2 Grid
-    rows = [INDUSTRIES_LIST[i:i + 4] for i in range(0, len(INDUSTRIES_LIST), 4)]
-    
+
+    rows = [INDUSTRIES[i:i+4] for i in range(0, 8, 4)]
     for row in rows:
         cols = st.columns(4)
-        for idx, ind_name in enumerate(row):
-            is_freemium = INDUSTRY_CONFIG.get(ind_name, {}).get("freemium", False)
-            is_unlocked = ind_name in st.session_state.unlocked_industries
-            
-            with cols[idx]:
-                with st.container(border=True):
-                    st.markdown(f"#### {ind_name}")
-                    
-                    if is_freemium or is_unlocked:
-                        st.caption("✅ Available")
-                        if st.button("Enter", key=f"ent_{ind_name}"):
-                            st.session_state.industry = ind_name
+        for i, industry in enumerate(row):
+            access = INDUSTRY_ACCESS[industry]
+            with cols[i]:
+                st.markdown(f"**{industry}**")
+
+                if access["freemium"]:
+                    if st.button("Enter", key=industry):
+                        st.session_state.industry = industry
+                        st.session_state.step = "role"
+                        st.rerun()
+                else:
+                    if st.session_state.tvc >= PAID_COST_TVC:
+                        if st.button("Unlock (6 TvC)", key=industry):
+                            st.session_state.tvc -= PAID_COST_TVC
+                            st.session_state.industry = industry
                             st.session_state.step = "role"
                             st.rerun()
                     else:
-                        st.caption(f"🔒 Locked ({PREMIUM_ACCESS_COST_TVC} TvC)")
-                        if st.button(f"Unlock (${PREMIUM_ACCESS_COST_USD})", key=f"ulk_{ind_name}"):
-                            unlock_industry(ind_name)
+                        st.caption("Locked – Earn TvC")
 
-# =======================
-# STEP 2: ROLE SELECTION
-# =======================
+# ---------------- ROLE SELECTION ----------------
 elif st.session_state.step == "role":
     st.button("← Back", on_click=lambda: st.session_state.update(step="industry"))
-    st.header(f"{st.session_state.industry}: Role Selection")
-    
-    # Check if we have data for this industry (for demo purposes)
-    if st.session_state.industry in FULL_DB:
-        roles = FULL_DB[st.session_state.industry]["roles"]
-        
-        for role in roles:
-            with st.container(border=True):
-                c1, c2 = st.columns([4,1])
-                with c1:
-                    st.subheader(role["title"])
-                    st.write(role["description"])
-                    st.info(f"Project: {role['project']['title']}")
-                with c2:
-                    st.write("")
-                    if st.button("Start Path", key=f"start_{role['title']}"):
-                        st.session_state.role_obj = role
-                        st.session_state.step = "workspace"
-                        st.session_state.current_task_index = 0
-                        st.session_state.completed_tasks = []
-                        st.rerun()
-    else:
-        st.warning("Simulation content for this industry is coming soon (Demo limitation). Try Technology or Energy.")
 
-# =======================
-# STEP 3: IMMERSIVE WORKSPACE
-# =======================
-elif st.session_state.step == "workspace":
-    role = st.session_state.role_obj
-    tasks = role['project']['tasks']
-    current_idx = st.session_state.current_task_index
-    
-    # Header
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        st.subheader(f"Project: {role['project']['title']}")
-    with c2:
-        if st.button("Exit Simulation"):
-            st.session_state.step = "role"
+    st.subheader(f"Roles in {st.session_state.industry}")
+    roles = SIMULATION.get(st.session_state.industry, {}).get("roles", {})
+
+    for role, data in roles.items():
+        with st.container(border=True):
+            st.markdown(f"### {role}")
+            st.write(f"Project: {data['project']}")
+            if st.button("Start Simulation", key=role):
+                st.session_state.role = role
+                st.session_state.project = data
+                st.session_state.step = "assignment"
+                st.rerun()
+
+# ---------------- ASSIGNMENT ----------------
+elif st.session_state.step == "assignment":
+    assignment = st.session_state.project["assignment"]
+
+    st.subheader(assignment["title"])
+    st.info(assignment["instruction"])
+
+    submission = st.text_area("Submit your work")
+
+    if st.button("Submit to AI Coach"):
+        score = score_submission(submission, assignment["keywords"])
+        st.session_state.score = score
+
+        if score >= 80:
+            st.success(f"Passed with {score}%")
+            st.session_state.assignment_done = True
+        else:
+            st.error(f"{score}% — Minimum 80% required. Retry.")
+
+    if st.session_state.assignment_done:
+        pdf = generate_portfolio()
+        st.download_button(
+            "Download Portfolio (PDF)",
+            pdf,
+            "Turnve_Portfolio.pdf",
+            "application/pdf"
+        )
+
+        if st.button("Start New Simulation"):
+            for k in defaults:
+                st.session_state[k] = defaults[k]
             st.rerun()
-            
-    # Progress Bar
-    prog = len(st.session_state.completed_tasks) / len(tasks)
-    st.progress(prog, text=f"Completion: {int(prog*100)}%")
-
-    # If all tasks done
-    if len(st.session_state.completed_tasks) == len(tasks):
-        st.success("🎉 Simulation Complete!")
-        st.balloons()
-        pdf_bytes = generate_pdf()
-        st.download_button("Download Proof of Experience (PDF)", pdf_bytes, "turnve_portfolio.pdf", "application/pdf")
-        st.stop()
-
-    # Current Active Task
-    current_task = tasks[current_idx]
-    
-    st.divider()
-    
-    # LAYOUT: LEFT (Work) | RIGHT (AI Coach)
-    col_work, col_coach = st.columns([1.5, 1])
-    
-    with col_work:
-        st.markdown(f"### 📝 Task {current_idx + 1}: {current_task['name']}")
-        st.write(current_task['prompt'])
-        
-        st.markdown("#### Your Workspace")
-        user_input = st.text_area("Analyze findings and type your solution here...", height=200)
-        
-        if st.button("Submit to AI Coach"):
-            with st.spinner("AI Coach is grading your submission..."):
-                time.sleep(1.5) # Simulate processing
-                score, feedback = assess_submission(user_input)
-                
-                if score >= current_task['min_score']:
-                    st.success(f"Passed! Score: {score}%")
-                    st.write(f"Coach: {feedback}")
-                    st.session_state.completed_tasks.append(current_task['name'])
-                    if current_idx + 1 < len(tasks):
-                        st.session_state.current_task_index += 1
-                        st.button("Next Task →") # Rerun trigger
-                    else:
-                        st.rerun()
-                else:
-                    st.error(f"Failed. Score: {score}% (Required: {current_task['min_score']}%)")
-                    st.write(f"Coach: {feedback}")
-                    st.warning("Please review the learning material on the right and try again.")
-
-    with col_coach:
-        st.container(border=True).markdown("### 🤖 AI Coach Hub")
-        st.info("I am here to guide you. Watch this quick course to understand the task.")
-        
-        # Embedded Learning
-        st.video(current_task['video_url'])
-        
-        st.markdown(f"**Source:** {current_task['resource_site']}")
-        st.caption("You must achieve >80% to proceed. Do not leave this screen.")
