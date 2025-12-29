@@ -2,77 +2,77 @@ import streamlit as st
 from datetime import datetime
 from fpdf import FPDF
 
-# =====================================================
+# =========================================================
 # CONFIG
-# =====================================================
+# =========================================================
 st.set_page_config(
-    page_title="Turnve – Career Simulation",
-    layout="wide"
+    page_title="Turnve – Career Simulation Demo",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# =====================================================
-# SESSION STATE
-# =====================================================
-defaults = {
-    "step": "industry",
-    "industry": None,
-    "role": None,
-    "project": None,
-    "assignment_done": False,
-    "score": None,
-    "tvc": 0
-}
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+# =========================================================
+# UTILITIES
+# =========================================================
+def sanitize_for_pdf(text: str) -> str:
+    """
+    Remove unicode characters (emojis, smart quotes, etc.)
+    that classic FPDF cannot encode.
+    """
+    if not text:
+        return ""
+    return text.encode("latin-1", errors="ignore").decode("latin-1")
 
-# =====================================================
-# INDUSTRIES & ACCESS
-# =====================================================
-INDUSTRIES = [
+
+# =========================================================
+# INDUSTRIES & ACCESS CONFIG
+# =========================================================
+ALL_INDUSTRIES = [
     "Technology & ICT", "Financial Services", "Retail & E-commerce", "Manufacturing",
     "Real Estate", "Media & Entertainment", "Energy & Utilities", "Healthcare"
 ]
 
-INDUSTRY_ACCESS = {
-    "Technology & ICT": {"freemium": True},
-    "Energy & Utilities": {"freemium": True},
-    "Financial Services": {"freemium": False},
-    "Retail & E-commerce": {"freemium": False},
-    "Manufacturing": {"freemium": False},
-    "Real Estate": {"freemium": False},
-    "Media & Entertainment": {"freemium": False},
-    "Healthcare": {"freemium": False},
+INDUSTRY_STATUS = {
+    "Technology & ICT": {"locked": False},
+    "Energy & Utilities": {"locked": False},
+    "Financial Services": {"locked": True},
+    "Retail & E-commerce": {"locked": True},
+    "Manufacturing": {"locked": True},
+    "Real Estate": {"locked": True},
+    "Media & Entertainment": {"locked": True},
+    "Healthcare": {"locked": True},
 }
 
-PAID_COST_TVC = 6  # $3 equivalent
-
-# =====================================================
+# =========================================================
 # CORE SIMULATION DATA
-# =====================================================
-SIMULATION = {
+# =========================================================
+ACTIVE_INDUSTRY_DATA = {
     "Technology & ICT": {
         "roles": {
-            "Software Engineer": {
-                "project": "Dark Mode Feature Implementation",
-                "assignment": {
-                    "title": "Implement Dark Mode",
-                    "instruction": (
-                        "Explain how you would implement Dark Mode in a web app.\n"
-                        "Mention CSS variables, theme toggling, and persistence."
-                    ),
-                    "keywords": ["css", "theme", "toggle", "dark", "local storage"]
+            "Product Associate": {
+                "description": "Work on feature discovery, requirements, and stakeholder alignment.",
+                "project": {
+                    "title": "Product Feature Launch Simulation",
+                    "goal": "Launch a Dark Mode feature for a web application.",
+                    "tasks": [
+                        "Analyze user feedback and feature request",
+                        "Define success metrics (KPIs)",
+                        "Craft a product requirement summary",
+                        "Align with stakeholders"
+                    ]
                 }
             },
-            "Product Associate": {
-                "project": "Product Feature Launch",
-                "assignment": {
-                    "title": "Define Feature Success",
-                    "instruction": (
-                        "Describe how you would analyze feedback and define KPIs "
-                        "for launching a Dark Mode feature."
-                    ),
-                    "keywords": ["kpi", "feedback", "adoption", "retention"]
+            "Software Engineer": {
+                "description": "Build, test, and ship production-ready features.",
+                "project": {
+                    "title": "Dark Mode Feature Implementation",
+                    "goal": "Implement Dark Mode with persistence and accessibility.",
+                    "tasks": [
+                        "Design theme architecture using CSS variables",
+                        "Implement theme toggle logic",
+                        "Persist theme selection",
+                        "Validate accessibility and contrast"
+                    ]
                 }
             }
         }
@@ -80,156 +80,198 @@ SIMULATION = {
     "Energy & Utilities": {
         "roles": {
             "Petroleum Engineer": {
-                "project": "Oil Field Optimization",
-                "assignment": {
-                    "title": "Analyze Well Performance Data",
-                    "instruction": (
-                        "Explain how you would analyze well pressure, flow rate, "
-                        "and decline trends to identify bottlenecks."
-                    ),
-                    "keywords": ["pressure", "flow", "decline", "bottleneck"]
-                }
-            },
-            "Energy Data Analyst": {
-                "project": "Consumption Optimization",
-                "assignment": {
-                    "title": "Identify Energy Inefficiencies",
-                    "instruction": (
-                        "Describe how consumption data can reveal inefficiencies "
-                        "and reduce operational costs."
-                    ),
-                    "keywords": ["consumption", "trend", "inefficiency", "optimization"]
+                "description": "Optimize oil field performance using engineering data.",
+                "project": {
+                    "title": "Oil Field Production Optimization Simulation",
+                    "goal": "Improve output while maintaining safety and efficiency.",
+                    "tasks": [
+                        "Analyze well performance data",
+                        "Identify production bottlenecks",
+                        "Recommend optimization techniques",
+                        "Prepare technical report"
+                    ]
                 }
             }
         }
     }
 }
 
-# =====================================================
-# AI COACH – SCORING
-# =====================================================
-def score_submission(text, keywords):
-    score = sum(20 for k in keywords if k in text.lower())
-    return min(score, 100)
+# =========================================================
+# AI COACH RESOURCES
+# =========================================================
+LEARNING_RESOURCES = {
+    "Product Associate": [
+        ("Product Management Basics (YouTube)", "https://www.youtube.com/watch?v=3KaqaF8YciU"),
+        ("Intro to Product Strategy", "https://www.coursera.org/learn/product-management")
+    ],
+    "Software Engineer": [
+        ("CSS Variables & Theming", "https://www.youtube.com/watch?v=5f2f8d0J1Yw"),
+        ("Dark Mode Best Practices", "https://web.dev/prefers-color-scheme/")
+    ],
+    "Petroleum Engineer": [
+        ("Intro to Petroleum Engineering", "https://www.youtube.com/watch?v=Zypkj33Zv9E"),
+        ("Oil Field Optimization Overview", "https://www.udemy.com/course/oil-and-gas-industry-overview/")
+    ]
+}
 
-# =====================================================
-# PDF PORTFOLIO
-# =====================================================
-def generate_portfolio():
+# =========================================================
+# SESSION STATE
+# =========================================================
+if "step" not in st.session_state:
+    st.session_state.step = "industry"
+if "industry" not in st.session_state:
+    st.session_state.industry = None
+if "role" not in st.session_state:
+    st.session_state.role = None
+if "completed_tasks" not in st.session_state:
+    st.session_state.completed_tasks = []
+if "submission" not in st.session_state:
+    st.session_state.submission = ""
+
+# =========================================================
+# HELPERS
+# =========================================================
+def reset_simulation():
+    st.session_state.step = "industry"
+    st.session_state.industry = None
+    st.session_state.role = None
+    st.session_state.completed_tasks = []
+    st.session_state.submission = ""
+
+
+def generate_pdf_portfolio(industry, role, project, tasks, submission_text):
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "Turnve – Proof of Experience", ln=True, align="C")
-    pdf.ln(10)
+    pdf.ln(5)
 
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 8, f"Industry: {st.session_state.industry}", ln=True)
-    pdf.cell(0, 8, f"Role: {st.session_state.role}", ln=True)
-    pdf.cell(0, 8, f"Score: {st.session_state.score}%", ln=True)
-    pdf.cell(0, 8, f"Date: {datetime.now().date()}", ln=True)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 8, f"Industry: {sanitize_for_pdf(industry)}", ln=True)
+    pdf.cell(0, 8, f"Role: {sanitize_for_pdf(role)}", ln=True)
+    pdf.cell(0, 8, f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
+    pdf.ln(5)
 
-    pdf.ln(10)
-    pdf.set_font("Arial", "I", 10)
-    pdf.multi_cell(
-        0, 8,
-        "This document certifies that the holder has completed "
-        "a simulation-based project assessed by Turnve AI Coach."
-    )
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 8, sanitize_for_pdf(project["title"]), ln=True)
+
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 7, sanitize_for_pdf(project["goal"]))
+    pdf.ln(3)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Tasks Completed:", ln=True)
+
+    pdf.set_font("Arial", size=11)
+    for task in tasks:
+        pdf.cell(0, 7, f"- {sanitize_for_pdf(task)}", ln=True)
+
+    pdf.ln(4)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "User Submission Summary:", ln=True)
+
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 7, sanitize_for_pdf(submission_text))
 
     return pdf.output(dest="S").encode("latin-1")
 
-# =====================================================
-# SIDEBAR – COINS
-# =====================================================
-with st.sidebar:
-    st.header("Turnve Coins (TvC)")
-    st.metric("Balance", st.session_state.tvc)
-
-    if st.button("Simulate 30 mins learning (+100 TvC)"):
-        st.session_state.tvc += 100
-
-    if st.button("Simulate 60 mins learning (+200 TvC)"):
-        st.session_state.tvc += 200
-
-# =====================================================
-# MAIN FLOW
-# =====================================================
+# =========================================================
+# UI
+# =========================================================
 st.title("Turnve – Career Simulation Platform")
-st.caption("Train. Simulate. Prove experience.")
+st.caption("Train. Simulate. Prove real experience.")
 
-# ---------------- INDUSTRY SELECTION ----------------
+# =========================================================
+# STEP 1: INDUSTRY
+# =========================================================
 if st.session_state.step == "industry":
     st.subheader("Select Industry")
 
-    rows = [INDUSTRIES[i:i+4] for i in range(0, 8, 4)]
+    rows = [ALL_INDUSTRIES[i:i + 4] for i in range(0, len(ALL_INDUSTRIES), 4)]
+
     for row in rows:
         cols = st.columns(4)
-        for i, industry in enumerate(row):
-            access = INDUSTRY_ACCESS[industry]
-            with cols[i]:
-                st.markdown(f"**{industry}**")
+        for idx, industry in enumerate(row):
+            with cols[idx]:
+                box = st.container(border=True)
+                box.markdown(f"**{industry}**")
 
-                if access["freemium"]:
-                    if st.button("Enter", key=industry):
+                if INDUSTRY_STATUS[industry]["locked"]:
+                    box.caption("🔒 Locked")
+                    box.button("Premium Required", disabled=True)
+                else:
+                    if box.button("Enter Simulation"):
                         st.session_state.industry = industry
                         st.session_state.step = "role"
                         st.rerun()
-                else:
-                    if st.session_state.tvc >= PAID_COST_TVC:
-                        if st.button("Unlock (6 TvC)", key=industry):
-                            st.session_state.tvc -= PAID_COST_TVC
-                            st.session_state.industry = industry
-                            st.session_state.step = "role"
-                            st.rerun()
-                    else:
-                        st.caption("Locked – Earn TvC")
 
-# ---------------- ROLE SELECTION ----------------
+# =========================================================
+# STEP 2: ROLE
+# =========================================================
 elif st.session_state.step == "role":
-    st.button("← Back", on_click=lambda: st.session_state.update(step="industry"))
+    st.subheader(f"{st.session_state.industry} Roles")
+    st.button("← Back", on_click=reset_simulation)
 
-    st.subheader(f"Roles in {st.session_state.industry}")
-    roles = SIMULATION.get(st.session_state.industry, {}).get("roles", {})
-
-    for role, data in roles.items():
+    roles = ACTIVE_INDUSTRY_DATA[st.session_state.industry]["roles"]
+    for role, info in roles.items():
         with st.container(border=True):
             st.markdown(f"### {role}")
-            st.write(f"Project: {data['project']}")
+            st.write(info["description"])
             if st.button("Start Simulation", key=role):
                 st.session_state.role = role
-                st.session_state.project = data
-                st.session_state.step = "assignment"
+                st.session_state.step = "project"
                 st.rerun()
 
-# ---------------- ASSIGNMENT ----------------
-elif st.session_state.step == "assignment":
-    assignment = st.session_state.project["assignment"]
+# =========================================================
+# STEP 3: PROJECT
+# =========================================================
+elif st.session_state.step == "project":
+    role_data = ACTIVE_INDUSTRY_DATA[st.session_state.industry]["roles"][st.session_state.role]
+    project = role_data["project"]
 
-    st.subheader(assignment["title"])
-    st.info(assignment["instruction"])
+    with st.sidebar:
+        st.header("AI Coach")
+        st.write(f"Role: **{st.session_state.role}**")
+        st.markdown("### Learning Resources")
+        for title, link in LEARNING_RESOURCES.get(st.session_state.role, []):
+            st.markdown(f"- [{title}]({link})")
 
-    submission = st.text_area("Submit your work")
+    st.subheader(project["title"])
+    st.write(project["goal"])
 
-    if st.button("Submit to AI Coach"):
-        score = score_submission(submission, assignment["keywords"])
-        st.session_state.score = score
-
-        if score >= 80:
-            st.success(f"Passed with {score}%")
-            st.session_state.assignment_done = True
+    for task in project["tasks"]:
+        if task not in st.session_state.completed_tasks:
+            if st.button(f"Complete: {task}"):
+                st.session_state.completed_tasks.append(task)
+                st.rerun()
         else:
-            st.error(f"{score}% — Minimum 80% required. Retry.")
+            st.success(task)
 
-    if st.session_state.assignment_done:
-        pdf = generate_portfolio()
-        st.download_button(
-            "Download Portfolio (PDF)",
-            pdf,
-            "Turnve_Portfolio.pdf",
-            "application/pdf"
+    if len(st.session_state.completed_tasks) == len(project["tasks"]):
+        st.divider()
+        st.success("Project completed. Submit your explanation.")
+
+        st.session_state.submission = st.text_area(
+            "Explain how you completed the project",
+            height=220
         )
 
-        if st.button("Start New Simulation"):
-            for k in defaults:
-                st.session_state[k] = defaults[k]
-            st.rerun()
+        if st.button("Generate Portfolio"):
+            pdf = generate_pdf_portfolio(
+                st.session_state.industry,
+                st.session_state.role,
+                project,
+                st.session_state.completed_tasks,
+                st.session_state.submission
+            )
+
+            st.download_button(
+                "Download Portfolio (PDF)",
+                data=pdf,
+                file_name="Turnve_Portfolio.pdf",
+                mime="application/pdf"
+            )
+
+            st.button("Restart Simulation", on_click=reset_simulation)
