@@ -274,4 +274,4 @@ elif st.session_state.step == "project":
                 mime="application/pdf"
             )
 
-            st.button("Restart Simulation", on_click=reset_simulation)
+            st.button("Restart Simulation",on_click=reset_simulation)
