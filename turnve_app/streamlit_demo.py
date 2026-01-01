@@ -539,5 +539,3 @@ with col_coach:
 
 
 
-
-
