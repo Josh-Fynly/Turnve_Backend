@@ -335,21 +335,19 @@ pdf.cell(50, 10, "Project Completed:", border=1)
 pdf.cell(0, 10, f" {st.session_state.role_obj['project']['title']}", border=1, ln=True)
 pdf.ln(10)
     
-    # --- VERIFIED SKILLS ---
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "Verified Competencies", ln=True)
-    
-    pdf.set_font("Arial", '', 11)
+# --- VERIFIED SKILLS ---
+pdf.set_font("Arial", 'B', 14)
+pdf.cell(0, 10, "Verified Competencies", ln=True)
+pdf.set_font("Arial", '', 11)
     for task in st.session_state.completed_tasks:
-        pdf.cell(0, 8, f"[x] {task} - Assessed by AI Coach (Score: >80%)", ln=True)
-    pdf.cell(50, 10, "Role Specialization:", border=1)
-    pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
+pdf.cell(0, 8, f"[x] {task} - Assessed by AI Coach (Score: >80%)", ln=True)
+pdf.cell(50, 10, "Role Specialization:", border=1)
+pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
 
 pdf.ln(20)
-    pdf.set_font("Arial", 'B', 10)
-    pdf.set_text_color(100, 100, 100) # Gray
-    pdf.multi_cell(0, 5, "This document certifies that the holder has successfully completed a professional career simulation on the Turnve Platform. All tasks were graded against industry standards.", align='C')
-    
+pdf.set_font("Arial", 'B', 10)
+pdf.set_text_color(100, 100, 100) # Gray
+pdf.multi_cell(0, 5, "This document certifies that the holder has successfully completed a professional career simulation on the Turnve Platform. All tasks were graded against industry standards.", align='C')
     return pdf.output(dest="S").encode("latin-1")
 
 # -----------------------------
