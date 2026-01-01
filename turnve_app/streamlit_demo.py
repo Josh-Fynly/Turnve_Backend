@@ -395,7 +395,7 @@ elif st.session_state.step == "workspace":
         st.container(border=True).markdown("###  AI Coach Hub")
         st.info("I am here to guide you. Watch this quick course to understand the task.")
         
-        # Embedded Learning
+       # Embedded Learning
         st.video(current_task['video_url'])
         
         st.markdown(f"**Source:** {current_task['resource_site']}")
