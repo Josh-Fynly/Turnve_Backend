@@ -348,4 +348,4 @@ elif st.session_state.step == "project":
                 use_container_width=True
             )
         with c2:
-            st.button("Start New Simulation", on_click=reset_simulation, use_container_width=True)
+             st.button("Start New Simulation", on_click=reset_simulation, use_container_width=True)
