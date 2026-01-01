@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 from io import BytesIO
 from fpdf import FPDF  # Requires: pip install fpdf
+from PIL import Image  # Requires: pip install Pillow
 
 # -----------------------------
 # CONFIG
@@ -103,16 +104,16 @@ ACTIVE_INDUSTRY_DATA = {
 # -----------------------------
 LEARNING_RESOURCES = {
     "Product Associate": [
-        ("Product Management Tutorial for Beginners (YouTube)", "https://www.youtube.com/watch?v=kbs-QwjLnEg"),
-        ("What is Product Management? (YouTube)", "https://www.youtube.com/watch?v=3KaqaF8YciU"),
+        ("Product Management Tutorial for Beginners (YouTube)", "https://www.youtube.com/watch?v=kbs-QwjLnEg "),
+        ("What is Product Management? (YouTube)", "https://www.youtube.com/watch?v=3KaqaF8YciU "),
     ],
     "Software Engineer": [
-        ("Beginner Guide to Software Engineering (YouTube)", "https://www.youtube.com/watch?v=nF65aNTc4Mk"),
-        ("Introduction to Software Engineering (YouTube)", "https://www.youtube.com/watch?v=IHx9ImEMuzQ"),
+        ("Beginner Guide to Software Engineering (YouTube)", "https://www.youtube.com/watch?v=nF65aNTc4Mk "),
+        ("Introduction to Software Engineering (YouTube)", "https://www.youtube.com/watch?v=IHx9ImEMuzQ "),
     ],
     "Petroleum Engineer": [
-        ("Applied Petroleum Engineering Lessons (YouTube)", "https://www.youtube.com/watch?v=Zypkj33Zv9E"),
-        ("Types of Petroleum Engineers (YouTube)", "https://www.youtube.com/watch?v=eAUGSZg3jXA"),
+        ("Applied Petroleum Engineering Lessons (YouTube)", "https://www.youtube.com/watch?v=Zypkj33Zv9E "),
+        ("Types of Petroleum Engineers (YouTube)", "https://www.youtube.com/watch?v=eAUGSZg3jXA "),
     ]
 }
 
@@ -141,10 +142,19 @@ def generate_pdf_portfolio(industry, role, project, tasks):
     pdf = FPDF()
     pdf.add_page()
     
-    # Fonts
-    pdf.set_font("Arial", 'B', 20)
-    pdf.cell(0, 15, "Turnve", ln=True, align='C')
+    # Add logo at the top center
+    # Make sure you have a file named 'turnve_logo.jpg' in your project directory
+    try:
+        # Add logo at the top center
+        pdf.image('turnve_logo.jpg', x=pdf.w/2 - 30, y=10, w=60)  # Adjust width as needed
+        pdf.ln(40)  # Add space after logo
+    except Exception as e:
+        # If logo file is not found, use text instead
+        pdf.set_font("Arial", 'B', 20)
+        pdf.cell(0, 15, "Turnve", ln=True, align='C')
+        pdf.ln(10)
     
+    # Continue with existing content
     pdf.set_font("Arial", '', 12)
     pdf.cell(0, 10, "Career Simulation Portfolio", ln=True, align='C')
     pdf.ln(10)
