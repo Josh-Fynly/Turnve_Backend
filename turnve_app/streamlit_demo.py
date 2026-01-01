@@ -450,11 +450,11 @@ else:
 # =======================
 # STEP 3: IMMERSIVE WORKSPACE
 # =======================
-elif st.session_state.step == "workspace":
+if st.session_state.step == "workspace":
     role = st.session_state.role_obj
     tasks = role['project']['tasks']
     current_idx = st.session_state.current_task_index
-# Header
+    # Header
     c1, c2 = st.columns([3, 1])
     with c1:
         st.subheader(f"Project: {role['project']['title']}")
@@ -462,8 +462,8 @@ elif st.session_state.step == "workspace":
         if st.button("Exit Simulation"):
             st.session_state.step = "role"
             st.rerun()
-            
-    # Progress Bar
+       
+            # Progress Bar
     prog = len(st.session_state.completed_tasks) / len(tasks)
     st.progress(prog, text=f"Completion: {int(prog*100)}%")
 
