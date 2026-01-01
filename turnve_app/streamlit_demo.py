@@ -486,8 +486,8 @@ if st.button("Return to Dashboard"):
             st.rerun()
 st.stop()
 
-    # Current Active Task
-    current_task = tasks[current_idx]
+# Current Active Task
+current_task = tasks[current_idx]
     
     st.divider()
     
