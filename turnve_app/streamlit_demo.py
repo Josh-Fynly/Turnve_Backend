@@ -345,7 +345,6 @@ pdf.cell(50, 10, "Role Specialization:", border=1)
     pdf.set_font("Arial", '', 11)
     for task in st.session_state.completed_tasks:
         pdf.cell(0, 8, f"[x] {task} - Assessed by AI Coach (Score: >80%)", ln=True)
-    
     pdf.cell(50, 10, "Role Specialization:", border=1)
     pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
 
