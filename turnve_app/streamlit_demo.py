@@ -439,14 +439,13 @@ for role in roles:
                 with c2:
                     st.write("")
                     if st.button("Start Path", key=f"start_{role['title']}"):
-                        st.session_state.role_obj = role
-                        st.session_state.step = "workspace"
-
-st.session_state.current_task_index = 0
-                    st.session_state.completed_tasks = []
-                        st.rerun()
-        else:
-        st.error("Error: Industry data missing.")
+    st.session_state.role_obj = role
+    st.session_state.step = "workspace"
+    st.session_state.current_task_index = 0
+    st.session_state.completed_tasks = []
+    st.rerun()
+else:
+    st.error("Error: Industry data missing.")
 
 # =======================
 # STEP 3: IMMERSIVE WORKSPACE
