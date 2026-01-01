@@ -5,6 +5,11 @@ import os
 from datetime import datetime
 from fpdf import FPDF  # Requires: pip install fpdf
 
+#Initialize PDF object
+pdf = FPDF()
+pdf.add_page()
+pdf.set_font ("Arial",size = 12)
+
 # -----------------------------
 # CONFIG & PAGE SETUP
 # -----------------------------
