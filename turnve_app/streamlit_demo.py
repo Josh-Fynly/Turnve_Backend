@@ -415,10 +415,10 @@ with cols[idx]:
                             st.session_state.industry = ind_name
                             st.session_state.step = "role"
                             st.rerun()
-     else:
-st.caption(f" Locked ({PREMIUM_ACCESS_COST_TVC} TvC)")
-                        if st.button(f"Unlock", key=f"ulk_{ind_name}"):
-                            unlock_industry(ind_name)
+                        else:
+                            st.caption(f" Locked ({PREMIUM_ACCESS_COST_TVC} TvC)")
+                            if st.button(f"Unlock", key=f"ulk_{ind_name}"):
+                                unlock_industry(ind_name)
 
 # =======================
 # STEP 2: ROLE SELECTION
