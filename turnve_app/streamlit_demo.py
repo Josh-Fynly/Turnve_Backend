@@ -355,7 +355,9 @@ pdf.ln(20)
 pdf.set_font("Arial", 'B', 10)
 pdf.set_text_color(100, 100, 100) # Gray
 pdf.multi_cell(0, 5, "This document certifies that the holder has successfully completed a professional career simulation on the Turnve Platform. All tasks were graded against industry standards.", align='C')
-return pdf.output(dest="S").encode("latin-1")
+def generate_pdf():
+    return
+pdf.output(dest="S").encode("latin-1")
 
 # -----------------------------
 # 6. SIDEBAR: WALLET & NAV
