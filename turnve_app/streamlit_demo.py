@@ -322,7 +322,6 @@ def generate_pdf_with_logo():
     pdf.cell(0, 8, f"Candidate Reference: TRN-{random.randint(10000,99999)}", ln=True)
     pdf.cell(0, 8, f"Date: {datetime.now().strftime('%B %d, %Y')}", ln=True)
     pdf.ln(5)
-    
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "Certification Details", ln=True)
     
