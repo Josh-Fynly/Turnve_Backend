@@ -375,7 +375,13 @@ for task in st.session_state.completed_tasks:
     )
 
 pdf.cell(50, 10, "Role Specialization:", border=1)
-pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
+if 'role_obj' in st.session_state and st.session_state.role_obj:
+    try:
+        pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
+    except (KeyError, AttributeError):
+        pdf.cell(0, 10, "Unknown Role", border=1, ln=True)
+else:
+    pdf.cell(0, 10, "Unknown Role", border=1, ln=True)
 
 pdf.ln(20)
 pdf.set_font("Arial", 'B', 10)
