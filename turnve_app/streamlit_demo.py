@@ -454,7 +454,6 @@ elif st.session_state.step == "workspace":
     role = st.session_state.role_obj
     tasks = role['project']['tasks']
     current_idx = st.session_state.current_task_index
-
 # Header
     c1, c2 = st.columns([3, 1])
     with c1:
