@@ -334,8 +334,7 @@ pdf.cell(50, 10, "Role Specialization:", border=1)
 pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
 pdf.cell(50, 10, "Project Completed:", border=1)
 pdf.cell(0, 10, f" {st.session_state.role_obj['project']['title']}", border=1, ln=True)
-    
-    pdf.ln(10)
+pdf.ln(10)
     
     # --- VERIFIED SKILLS ---
     pdf.set_font("Arial", 'B', 14)
