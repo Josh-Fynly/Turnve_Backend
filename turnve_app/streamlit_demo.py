@@ -346,8 +346,7 @@ st.session_state.completed_tasks:
       8,
       f"[x] {task} - Assessed by AI 
 Coach (Score: >80%)", 
-        ln=True
-)
+        ln=True)
 
 pdf.cell(50, 10, "Role Specialization:", border=1)
 pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
