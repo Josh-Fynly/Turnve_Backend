@@ -488,8 +488,7 @@ st.stop()
 
 # Current Active Task
 current_task = tasks[current_idx]
-    
-    st.divider()
+st.divider()
     
     # LAYOUT: LEFT (Work) | RIGHT (AI Coach)
     col_work, col_coach = st.columns([1.5, 1])
