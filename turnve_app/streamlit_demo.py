@@ -368,9 +368,9 @@ c1.metric("TvC Coins", f"{st.session_state.wallet_tvc}")
 c2.metric("Est. Value", f"${st.session_state.wallet_tvc * TVC_EXCHANGE_RATE:.2f}")
 st.caption(f"Rate: {COINS_PER_30_MIN} TvC / 30 mins")
 st.divider()
-    
-    # Simulation Tool for Demo Users
-    st.subheader("Dev Tools (Simulation)")
+
+# Simulation Tool for Demo Users
+st.subheader("Dev Tools (Simulation)")
     if st.button("Simulate 30 Mins Work"):
         add_time(30)
     if st.button("Simulate 60 Mins Work"):
