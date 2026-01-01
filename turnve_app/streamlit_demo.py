@@ -364,7 +364,7 @@ with st.sidebar:
     st.title("Turnve Wallet")
 
 c1, c2 = st.columns(2)
-    c1.metric("TvC Coins", f"{st.session_state.wallet_tvc}")
+c1.metric("TvC Coins", f"{st.session_state.wallet_tvc}")
     c2.metric("Est. Value", f"${st.session_state.wallet_tvc * TVC_EXCHANGE_RATE:.2f}")
     
     st.caption(f"Rate: {COINS_PER_30_MIN} TvC / 30 mins")
