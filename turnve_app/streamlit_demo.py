@@ -334,20 +334,32 @@ def generate_pdf_with_logo():
     pdf.cell(50, 10, "Industry:", border=1)
     pdf.cell(0, 10, f" {st.session_state.industry}", border=1, ln=True)
 
-# Check if role_obj exists in session state
-if 'role_obj' in st.session_state:
-    pdf.cell(50, 10, "Role Specialization:", border=1)
-    pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
-    pdf.cell(50, 10, "Project Completed:", border=1)
-    pdf.cell(0, 10, f" {st.session_state.role_obj['project']['title']}", border=1, ln=True)
-    pdf.ln(10)
+ # Check if role_obj exists and has required keys
+if 'role_obj' in st.session_state and st.session_state.role_obj:
+    role_obj = st.session_state.role_obj
+    if isinstance(role_obj, dict) and 'title' in role_obj:
+        pdf.cell(50, 10, "Role Specialization:", border=1)
+        pdf.cell(0, 10, f" {role_obj['title']}", border=1, ln=True)
+        
+        # Check if project exists and has title
+        if 'project' in role_obj and isinstance(role_obj['project'], dict) and 'title' in role_obj['project']:
+            pdf.cell(50, 10, "Project Completed:", border=1)
+            pdf.cell(0, 10, f" {role_obj['project']['title']}", border=1, ln=True)
+        else:
+            pdf.cell(50, 10, "Project Completed:", border=1)
+            pdf.cell(0, 10, "Unknown Project", border=1, ln=True)
+    else:
+        pdf.cell(50, 10, "Role Specialization:", border=1)
+        pdf.cell(0, 10, "Unknown Role", border=1, ln=True)
+        pdf.cell(50, 10, "Project Completed:", border=1)
+        pdf.cell(0, 10, "Unknown Project", border=1, ln=True)
 else:
-    # Fallback if role_obj is not available
     pdf.cell(50, 10, "Role Specialization:", border=1)
     pdf.cell(0, 10, "Not Available", border=1, ln=True)
     pdf.cell(50, 10, "Project Completed:", border=1)
     pdf.cell(0, 10, "Not Available", border=1, ln=True)
-    pdf.ln(10)
+
+pdf.ln(10)
     
 # --- VERIFIED SKILLS ---
 pdf.set_font("Arial", 'B', 14)
