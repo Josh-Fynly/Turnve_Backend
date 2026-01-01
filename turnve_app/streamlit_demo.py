@@ -373,7 +373,7 @@ st.divider()
 st.subheader("Dev Tools (Simulation)")
 if st.button("Simulate 30 Mins Work"):
         add_time(30)
-    if st.button("Simulate 60 Mins Work"):
+if st.button("Simulate 60 Mins Work"):
         add_time(60)
 
 st.divider()
