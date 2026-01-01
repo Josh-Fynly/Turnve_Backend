@@ -334,11 +334,20 @@ def generate_pdf_with_logo():
     pdf.cell(50, 10, "Industry:", border=1)
     pdf.cell(0, 10, f" {st.session_state.industry}", border=1, ln=True)
 
-pdf.cell(50, 10, "Role Specialization:", border=1)
-pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
-pdf.cell(50, 10, "Project Completed:", border=1)
-pdf.cell(0, 10, f" {st.session_state.role_obj['project']['title']}", border=1, ln=True)
-pdf.ln(10)
+# Check if role_obj exists in session state
+if 'role_obj' in st.session_state:
+    pdf.cell(50, 10, "Role Specialization:", border=1)
+    pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
+    pdf.cell(50, 10, "Project Completed:", border=1)
+    pdf.cell(0, 10, f" {st.session_state.role_obj['project']['title']}", border=1, ln=True)
+    pdf.ln(10)
+else:
+    # Fallback if role_obj is not available
+    pdf.cell(50, 10, "Role Specialization:", border=1)
+    pdf.cell(0, 10, "Not Available", border=1, ln=True)
+    pdf.cell(50, 10, "Project Completed:", border=1)
+    pdf.cell(0, 10, "Not Available", border=1, ln=True)
+    pdf.ln(10)
     
 # --- VERIFIED SKILLS ---
 pdf.set_font("Arial", 'B', 14)
