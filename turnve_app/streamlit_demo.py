@@ -484,7 +484,7 @@ if st.button("Return to Dashboard"):
             for k in defaults.keys():
                 del st.session_state[k]
             st.rerun()
-        st.stop()
+st.stop()
 
     # Current Active Task
     current_task = tasks[current_idx]
