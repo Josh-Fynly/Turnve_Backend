@@ -3,6 +3,7 @@ import time
 import random
 from datetime import datetime
 from fpdf import FPDF
+from PIL import Image  # Requires: pip install Pillow
 
 # -----------------------------
 # CONFIG & PAGE SETUP
@@ -57,21 +58,21 @@ FULL_DB = {
                         {
                             "name": "Analyze well performance data",
                             "prompt": "Review the provided pressure and flow rate datasets. Identify anomalies indicating blockage.",
-                            "video_url": "https://www.youtube.com/watch?v=I7CQWgZInq4", # Intro to Petroleum Engineering
+                            "video_url": "https://www.youtube.com/watch?v=I7CQWgZInq4 ", # Intro to Petroleum Engineering
                             "resource_site": "Coursera (Energy Track)",
                             "min_score": 80
                         },
                         {
                             "name": "Identify production bottlenecks",
                             "prompt": "Based on your analysis, list the top 3 choke points in the pipeline infrastructure.",
-                            "video_url": "https://www.youtube.com/watch?v=ZzjM1R5jR1k", 
+                            "video_url": "https://www.youtube.com/watch?v=ZzjM1R5jR1k ", 
                             "resource_site": "Udemy (Oil & Gas)",
                             "min_score": 80
                         },
                         {
                             "name": "Recommend Optimization Techniques",
                             "prompt": "Propose an intervention strategy (e.g., Acidizing, Hydraulic Fracturing) for Well #4.",
-                            "video_url": "https://www.youtube.com/watch?v=eAUGSZg3jXA",
+                            "video_url": "https://www.youtube.com/watch?v=eAUGSZg3jXA ",
                             "resource_site": "DigitalDefynd",
                             "min_score": 80
                         }
@@ -85,8 +86,8 @@ FULL_DB = {
                     "title": "Grid Consumption Analysis",
                     "goal": "Reduce waste by 15% through data analysis.",
                     "tasks": [
-                        {"name": "Audit Grid Load", "prompt": "Identify peak load times.", "video_url": "https://www.youtube.com/watch?v=f7G870W_2TQ", "resource_site": "Khan Academy", "min_score": 80},
-                        {"name": "Forecast Demand", "prompt": "Create a 7-day demand forecast.", "video_url": "https://www.youtube.com/watch?v=f7G870W_2TQ", "resource_site": "Coursera", "min_score": 80},
+                        {"name": "Audit Grid Load", "prompt": "Identify peak load times.", "video_url": "https://www.youtube.com/watch?v=f7G870W_2TQ ", "resource_site": "Khan Academy", "min_score": 80},
+                        {"name": "Forecast Demand", "prompt": "Create a 7-day demand forecast.", "video_url": "https://www.youtube.com/watch?v=f7G870W_2TQ ", "resource_site": "Coursera", "min_score": 80},
                     ]
                 }
             },
@@ -97,7 +98,7 @@ FULL_DB = {
                     "title": "Solar Field Deployment",
                     "goal": "Plan the layout for a 50-acre solar farm.",
                     "tasks": [
-                        {"name": "Site Feasibility Study", "prompt": "Assess soil and sun hours.", "video_url": "https://www.youtube.com/watch?v=xKxrkht7CpY", "resource_site": "Mindluster", "min_score": 80},
+                        {"name": "Site Feasibility Study", "prompt": "Assess soil and sun hours.", "video_url": "https://www.youtube.com/watch?v=xKxrkht7CpY ", "resource_site": "Mindluster", "min_score": 80},
                     ]
                 }
             }
@@ -115,14 +116,14 @@ FULL_DB = {
                         {
                             "name": "Analyze user feedback",
                             "prompt": "Summarize the top 3 user complaints regarding eye strain.",
-                            "video_url": "https://www.youtube.com/watch?v=ravLfnYuqmA",
+                            "video_url": "https://www.youtube.com/watch?v=ravLfnYuqmA ",
                             "resource_site": "Coursera",
                             "min_score": 80
                         },
                         {
                             "name": "Define Success Metrics (KPIs)",
                             "prompt": "What 3 metrics will indicate this launch is successful?",
-                            "video_url": "https://www.youtube.com/watch?v=3KaqaF8YciU",
+                            "video_url": "https://www.youtube.com/watch?v=3KaqaF8YciU ",
                             "resource_site": "Udemy",
                             "min_score": 80
                         }
@@ -136,8 +137,8 @@ FULL_DB = {
                     "title": "Auth System Implementation",
                     "goal": "Build a secure login API.",
                     "tasks": [
-                        {"name": "Design DB Schema", "prompt": "Submit the SQL for the User table.", "video_url": "https://www.youtube.com/watch?v=nF65aNTc4Mk", "resource_site": "YouTube/FreeCodeCamp", "min_score": 80},
-                        {"name": "Write Unit Tests", "prompt": "Write a test case for invalid password entry.", "video_url": "https://www.youtube.com/watch?v=IHx9ImEMuzQ", "resource_site": "Khan Academy", "min_score": 80}
+                        {"name": "Design DB Schema", "prompt": "Submit the SQL for the User table.", "video_url": "https://www.youtube.com/watch?v=nF65aNTc4Mk ", "resource_site": "YouTube/FreeCodeCamp", "min_score": 80},
+                        {"name": "Write Unit Tests", "prompt": "Write a test case for invalid password entry.", "video_url": "https://www.youtube.com/watch?v=IHx9ImEMuzQ ", "resource_site": "Khan Academy", "min_score": 80}
                     ]
                 }
             },
@@ -148,7 +149,7 @@ FULL_DB = {
                     "title": "Mobile App Redesign",
                     "goal": "Improve navigation flow.",
                     "tasks": [
-                        {"name": "Wireframing", "prompt": "Create a low-fidelity wireframe.", "video_url": "https://www.youtube.com/watch?v=c9Wg6Cb_YlU", "resource_site": "DigitalDefynd", "min_score": 80},
+                        {"name": "Wireframing", "prompt": "Create a low-fidelity wireframe.", "video_url": "https://www.youtube.com/watch?v=c9Wg6Cb_YlU ", "resource_site": "DigitalDefynd", "min_score": 80},
                     ]
                 }
             }
@@ -213,10 +214,20 @@ def assess_submission(submission_text):
 def generate_pdf():
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 20)
-    pdf.cell(0, 15, "Turnve Proof of Experience", ln=True, align='C')
-    pdf.ln(10)
     
+    # Add logo at the top center
+    # Make sure you have a file named 'turnve_logo.jpg' in your project directory
+    try:
+        # Add logo at the top center
+        pdf.image('turnve_logo.jpg', x=pdf.w/2 - 30, y=10, w=60)  # Adjust width as needed
+        pdf.ln(40)  # Add space after logo
+    except Exception as e:
+        # If logo file is not found, use text instead
+        pdf.set_font("Arial", 'B', 20)
+        pdf.cell(0, 15, "Turnve Proof of Experience", ln=True, align='C')
+        pdf.ln(10)
+    
+    # Continue with existing content
     pdf.set_font("Arial", '', 12)
     pdf.cell(0, 10, f"Candidate ID: TRN-{random.randint(1000,9999)}", ln=True)
     pdf.cell(0, 10, f"Role: {st.session_state.role_obj['title']}", ln=True)
@@ -395,7 +406,7 @@ elif st.session_state.step == "workspace":
         st.container(border=True).markdown("###  AI Coach Hub")
         st.info("I am here to guide you. Watch this quick course to understand the task.")
         
-       # Embedded Learning
+        # Embedded Learning
         st.video(current_task['video_url'])
         
         st.markdown(f"**Source:** {current_task['resource_site']}")
