@@ -377,7 +377,7 @@ if st.button("Simulate 60 Mins Work"):
         add_time(60)
 
 st.divider()
-    if st.button("Reset Demo"):
+if st.button("Reset Demo"):
         for k in defaults.keys():
             del st.session_state[k]
         st.rerun()
