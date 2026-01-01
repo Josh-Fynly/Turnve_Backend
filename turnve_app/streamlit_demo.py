@@ -446,7 +446,7 @@ for role in roles:
 st.session_state.current_task_index = 0
                         st.session_state.completed_tasks = []
                         st.rerun()
-    else:
+        else:
         st.error("Error: Industry data missing.")
 
 # =======================
