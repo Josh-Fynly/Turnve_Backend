@@ -491,51 +491,45 @@ current_task = tasks[current_idx]
 st.divider()
     
     # LAYOUT: LEFT (Work) | RIGHT (AI Coach)
-    col_work, col_coach = st.columns([1.5, 1])
+col_work, col_coach = st.columns([1.5, 1])
+
+with col_work:
+    st.markdown(f"###  Task {current_idx + 1}: {current_task['name']}")
     
-    with col_work:
-        st.markdown(f"###  Task {current_idx + 1}: {current_task['name']}")
+    st.write(current_task['prompt'])
+    
+    st.markdown("#### Your Workspace")
+    user_input = st.text_area("Analyze findings and type your solution here...", height=200, key=f"input_{current_idx}")
 
-st.write(current_task['prompt'])
-        
-        st.markdown("#### Your Workspace")
-        user_input = st.text_area("Analyze findings and type your solution here...", height=200, key=f"input_{current_idx}")
-        
-        if st.button("Submit to AI Coach"):
-            with st.spinner("AI Coach is grading your submission..."):
-                time.sleep(1.5) # Simulate processing
-                score, feedback = assess_submission(user_input)
-                
-                if score >= current_task['min_score']:
-                    st.success(f"Passed! Score: {score}%")
+    if st.button("Submit to AI Coach"):
+        with st.spinner("AI Coach is grading your submission..."):
+            time.sleep(1.5) # Simulate processing
+            score, feedback = assess_submission(user_input)
 
-st.write(f"Coach: {feedback}")
-                    st.session_state.completed_tasks.append(current_task['name'])
-                    if current_idx + 1 < len(tasks):
-                        st.session_state.current_task_index += 1
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        time.sleep(1)
-                        st.rerun()
+            if score >= current_task['min_score']:
+                st.success(f"Passed! Score: {score}%")
+                st.write(f"Coach: {feedback}")
+                st.session_state.completed_tasks.append(current_task['name'])
+                if current_idx + 1 < len(tasks):
+                    st.session_state.current_task_index += 1
+                    time.sleep(1)
+                    st.rerun()
                 else:
-                    st.error(f"Failed. Score: {score}% (Required: {current_task['min_score']}%)")
-                    st.write(f"Coach: {feedback}")
-                    st.warning("Please study the lecture notes on the right and try again.")
+                    time.sleep(1)
+                    st.rerun()
+            else:
+                st.error(f"Failed. Score: {score}% (Required: {current_task['min_score']}%)")
+                st.write(f"Coach: {feedback}")
+                st.warning("Please study the lecture notes on the right and try again.")
 
 with col_coach:
-        with st.container(border=True):
-            st.markdown("###  AI Coach")
-            st.info("I have prepared a lecture for this specific task. Read carefully.")
-            
-            # --- THE AI LECTURE (SAFE/ANONYMOUS) ---
-            st.markdown("---")
-            st.markdown(current_task['ai_lecture_content'])
-            st.markdown("---")
-            
-            st.caption("You must achieve >80% to proceed. Do not leave this screen.")
+    with st.container(border=True):
+        st.markdown("###  AI Coach")
+        st.info("I have prepared a lecture for this specific task. Read carefully.")
 
+        # --- THE AI LECTURE (SAFE/ANONYMOUS) ---
+        st.markdown("---")
+        st.markdown(current_task['ai_lecture_content'])
+        st.markdown("---")
 
-
-
-
+        st.caption("You must achieve ≥80% to proceed. Do not leave this screen")
