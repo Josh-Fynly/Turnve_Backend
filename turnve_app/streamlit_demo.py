@@ -317,4 +317,233 @@ def generate_pdf_with_logo():
     pdf.line(10, 35, 200, 35) # Horizontal line
     pdf.ln(10)
     
-    # --- CAN
+    # ---CANDIDATE INFO ---
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(0, 8, f"Candidate Reference: TRN-{random.randint(10000,99999)}", ln=True)
+    pdf.cell(0, 8, f"Date: {datetime.now().strftime('%B %d, %Y')}", ln=True)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "Certification Details", ln=True)
+    
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(50, 10, "Industry:", border=1)
+    pdf.cell(0, 10, f" {st.session_state.industry}", border=1, ln=True)
+
+pdf.cell(50, 10, "Role Specialization:", border=1)
+    pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
+    
+    pdf.cell(50, 10, "Project Completed:", border=1)
+    pdf.cell(0, 10, f" {st.session_state.role_obj['project']['title']}", border=1, ln=True)
+    
+    pdf.ln(10)
+    
+    # --- VERIFIED SKILLS ---
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "Verified Competencies", ln=True)
+    
+    pdf.set_font("Arial", '', 11)
+    for task in st.session_state.completed_tasks:
+        pdf.cell(0, 8, f"[x] {task} - Assessed by AI Coach (Score: >80%)", ln=True)
+    
+    pdf.cell(50, 10, "Role Specialization:", border=1)
+    pdf.cell(0, 10, f" {st.session_state.role_obj['title']}", border=1, ln=True)
+
+pdf.ln(20)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.set_text_color(100, 100, 100) # Gray
+    pdf.multi_cell(0, 5, "This document certifies that the holder has successfully completed a professional career simulation on the Turnve Platform. All tasks were graded against industry standards.", align='C')
+    
+    return pdf.output(dest="S").encode("latin-1")
+
+# -----------------------------
+# 6. SIDEBAR: WALLET & NAV
+# -----------------------------
+with st.sidebar:
+    st.title("Turnve Wallet")
+
+c1, c2 = st.columns(2)
+    c1.metric("TvC Coins", f"{st.session_state.wallet_tvc}")
+    c2.metric("Est. Value", f"${st.session_state.wallet_tvc * TVC_EXCHANGE_RATE:.2f}")
+    
+    st.caption(f"Rate: {COINS_PER_30_MIN} TvC / 30 mins")
+    
+    st.divider()
+    
+    # Simulation Tool for Demo Users
+    st.subheader("Dev Tools (Simulation)")
+    if st.button("Simulate 30 Mins Work"):
+        add_time(30)
+    if st.button("Simulate 60 Mins Work"):
+        add_time(60)
+
+st.divider()
+    if st.button("Reset Demo"):
+        for k in defaults.keys():
+            del st.session_state[k]
+        st.rerun()
+
+# -----------------------------
+# 7. MAIN APP UI
+# -----------------------------
+st.title("Turnve Career Simulation")
+
+# =======================
+# STEP 1: INDUSTRY GRID
+# =======================
+if st.session_state.step == "industry":
+    st.subheader("Select Industry")
+    st.info("Accumulate TvC coins to unlock premium industries.")
+
+# 4x2 Grid
+    industry_names = list(FULL_DB.keys()) # Get keys from the full DB
+    rows = [industry_names[i:i + 4] for i in range(0, len(industry_names), 4)]
+    
+    for row in rows:
+        cols = st.columns(4)
+        for idx, ind_name in enumerate(row):
+            # Check DB config
+            is_freemium = FULL_DB.get(ind_name, {}).get("freemium", False)
+            is_unlocked = ind_name in st.session_state.unlocked_industries
+
+with cols[idx]:
+                with st.container(border=True):
+                    st.markdown(f"#### {ind_name}")
+                    
+                    if is_freemium or is_unlocked:
+                        st.caption("✅ Available")
+                        if st.button("Enter", key=f"ent_{ind_name}"):
+                            st.session_state.industry = ind_name
+                            st.session_state.step = "role"
+                            st.rerun()
+                    else:
+
+st.caption(f" Locked ({PREMIUM_ACCESS_COST_TVC} TvC)")
+                        if st.button(f"Unlock", key=f"ulk_{ind_name}"):
+                            unlock_industry(ind_name)
+
+# =======================
+# STEP 2: ROLE SELECTION
+# =======================
+elif st.session_state.step == "role":
+    st.button("← Back", on_click=lambda: st.session_state.update(step="industry"))
+    st.header(f"{st.session_state.industry}: Role Selection")
+    
+    if st.session_state.industry in FULL_DB:
+        roles = FULL_DB[st.session_state.industry]["roles"]
+
+for role in roles:
+            with st.container(border=True):
+                c1, c2 = st.columns([4,1])
+                with c1:
+                    st.subheader(role["title"])
+                    st.write(role["description"])
+                    st.info(f"Project: {role['project']['title']}")
+                with c2:
+                    st.write("")
+                    if st.button("Start Path", key=f"start_{role['title']}"):
+                        st.session_state.role_obj = role
+                        st.session_state.step = "workspace"
+
+st.session_state.current_task_index = 0
+                        st.session_state.completed_tasks = []
+                        st.rerun()
+    else:
+        st.error("Error: Industry data missing.")
+
+# =======================
+# STEP 3: IMMERSIVE WORKSPACE
+# =======================
+elif st.session_state.step == "workspace":
+    role = st.session_state.role_obj
+    tasks = role['project']['tasks']
+    current_idx = st.session_state.current_task_index
+
+# Header
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.subheader(f"Project: {role['project']['title']}")
+    with c2:
+        if st.button("Exit Simulation"):
+            st.session_state.step = "role"
+            st.rerun()
+            
+    # Progress Bar
+    prog = len(st.session_state.completed_tasks) / len(tasks)
+    st.progress(prog, text=f"Completion: {int(prog*100)}%")
+
+
+# If all tasks done
+    if len(st.session_state.completed_tasks) == len(tasks):
+        st.success(" Simulation Complete!")
+        st.balloons()
+        
+        st.write("---")
+        st.markdown("###  Certification Ready")
+        st.write("Your work has been verified. Download your official Proof of Experience below.")
+        
+        pdf_bytes = generate_pdf_with_logo()
+        st.download_button("Download Proof of Experience (PDF)", pdf_bytes, "turnve_portfolio.pdf", "application/pdf")
+
+if st.button("Return to Dashboard"):
+            for k in defaults.keys():
+                del st.session_state[k]
+            st.rerun()
+        st.stop()
+
+    # Current Active Task
+    current_task = tasks[current_idx]
+    
+    st.divider()
+    
+    # LAYOUT: LEFT (Work) | RIGHT (AI Coach)
+    col_work, col_coach = st.columns([1.5, 1])
+    
+    with col_work:
+        st.markdown(f"###  Task {current_idx + 1}: {current_task['name']}")
+
+st.write(current_task['prompt'])
+        
+        st.markdown("#### Your Workspace")
+        user_input = st.text_area("Analyze findings and type your solution here...", height=200, key=f"input_{current_idx}")
+        
+        if st.button("Submit to AI Coach"):
+            with st.spinner("AI Coach is grading your submission..."):
+                time.sleep(1.5) # Simulate processing
+                score, feedback = assess_submission(user_input)
+                
+                if score >= current_task['min_score']:
+                    st.success(f"Passed! Score: {score}%")
+
+st.write(f"Coach: {feedback}")
+                    st.session_state.completed_tasks.append(current_task['name'])
+                    if current_idx + 1 < len(tasks):
+                        st.session_state.current_task_index += 1
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        time.sleep(1)
+                        st.rerun()
+                else:
+                    st.error(f"Failed. Score: {score}% (Required: {current_task['min_score']}%)")
+                    st.write(f"Coach: {feedback}")
+                    st.warning("Please study the lecture notes on the right and try again.")
+
+with col_coach:
+        with st.container(border=True):
+            st.markdown("###  AI Coach")
+            st.info("I have prepared a lecture for this specific task. Read carefully.")
+            
+            # --- THE AI LECTURE (SAFE/ANONYMOUS) ---
+            st.markdown("---")
+            st.markdown(current_task['ai_lecture_content'])
+            st.markdown("---")
+            
+            st.caption("You must achieve >80% to proceed. Do not leave this screen.")
+
+
+
+
+
+
+
