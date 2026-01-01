@@ -438,7 +438,7 @@ for role in roles:
                     st.info(f"Project: {role['project']['title']}")
                 with c2:
                     st.write("")
-                    if st.button("Start Path", key=f"start_{role['title']}"):
+                     if st.button("Start Path", key=f"start_{role['title']}"):
     st.session_state.role_obj = role
     st.session_state.step = "workspace"
     st.session_state.current_task_index = 0
