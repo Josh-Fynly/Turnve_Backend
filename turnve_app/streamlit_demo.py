@@ -462,7 +462,7 @@ if st.session_state.step == "role":
     st.header(f"{st.session_state.industry}: Role Selection")
     if st.session_state.industry in FULL_DB:
         roles = FULL_DB[st.session_state.industry]["roles"]
-        
+
         for role in roles:
             with st.container(border=True):
                 c1, c2 = st.columns([4,1])
@@ -472,15 +472,15 @@ if st.session_state.step == "role":
                     st.info(f"Project: {role['project']['title']}")
                 with c2:
                     st.write("")
-#Add the button inside the same container
-if st.button("Start Path", key=f"start_{role['title']}"):
-    st.session_state.role_obj = role
-    st.session_state.step = "workspace"
-    st.session_state.current_task_index = 0
-    st.session_state.completed_tasks = []
-    st.rerun()
-else:
-    st.error("Error: Industry data missing.")
+                    # Add the button inside the same container
+                    if st.button("Start Path", key=f"start_{role['title']}"):
+                        st.session_state.role_obj = role
+                        st.session_state.step = "workspace"
+                        st.session_state.current_task_index = 0
+                        st.session_state.completed_tasks = []
+                        st.rerun()
+    else:
+        st.error("Error: Industry data missing.")
 
 # =======================
 # STEP 3: IMMERSIVE WORKSPACE
