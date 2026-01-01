@@ -472,6 +472,7 @@ if st.session_state.step == "role":
                     st.info(f"Project: {role['project']['title']}")
                 with c2:
                     st.write("")
+                 #Add the button inside the same container
 if st.button("Start Path", key=f"start_{role['title']}"):
     st.session_state.role_obj = role
     st.session_state.step = "workspace"
