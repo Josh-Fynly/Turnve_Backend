@@ -423,9 +423,9 @@ with cols[idx]:
 # =======================
 # STEP 2: ROLE SELECTION
 # =======================
-elif st.session_state.step == "role":
+if st.session_state.step == "role":
     st.button("← Back", on_click=lambda: st.session_state.update(step="industry"))
-st.header(f"{st.session_state.industry}: Role Selection")
+    st.header(f"{st.session_state.industry}: Role Selection")
     
    if st.session_state.industry in FULL_DB:
         roles = FULL_DB[st.session_state.industry]["roles"]
