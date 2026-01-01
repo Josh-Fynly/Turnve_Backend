@@ -462,8 +462,8 @@ if st.session_state.step == "role":
     st.header(f"{st.session_state.industry}: Role Selection")
     if st.session_state.industry in FULL_DB:
         roles = FULL_DB[st.session_state.industry]["roles"]
-
-for role in roles:
+        
+        for role in roles:
             with st.container(border=True):
                 c1, c2 = st.columns([4,1])
                 with c1:
