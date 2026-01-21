@@ -1,28 +1,33 @@
+from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 
+class DecisionError(Exception):
+    """Permanent decision system error."""
+    pass
+
+
+@dataclass(frozen=True)
 class DecisionOption:
     """
-    Represents a single actionable option within a decision.
+    A single actionable option within a decision.
     """
-
-    def __init__(
-        self,
-        option_id: str,
-        description: str,
-        resource_cost: Optional[Dict[str, int]] = None,
-        consequences: Optional[List[Dict[str, Any]]] = None
-    ):
-        self.option_id = option_id
-        self.description = description
-        self.resource_cost = resource_cost or {}
-        self.consequences = consequences or []
+    option_id: str
+    description: str
+    resource_cost: Dict[str, int]
+    consequences: List[Dict[str, Any]]
 
 
 class Decision:
     """
     Represents a decision point within the simulation.
+
+    Decisions:
+    - Consume time
+    - Consume resources
+    - Trigger consequences
+    - Are logged as evidence
     """
 
     def __init__(
@@ -32,7 +37,8 @@ class Decision:
         context: str,
         options: List[DecisionOption],
         required_role: Optional[str] = None,
-        expires_at: Optional[int] = None
+        expires_at: Optional[int] = None,
+        time_cost: int = 1
     ):
         self.decision_id = decision_id
         self.title = title
@@ -40,15 +46,14 @@ class Decision:
         self.options = options
         self.required_role = required_role
         self.expires_at = expires_at
+        self.time_cost = time_cost
 
         self.made = False
         self.selected_option: Optional[DecisionOption] = None
-        self.timestamp: Optional[datetime] = None
+        self.made_at: Optional[int] = None
+        self.logged_at: Optional[datetime] = None
 
     def is_available(self, session_time: int) -> bool:
-        """
-        Checks whether the decision can still be made.
-        """
         if self.made:
             return False
         if self.expires_at is not None and session_time > self.expires_at:
@@ -56,11 +61,11 @@ class Decision:
         return True
 
     def make(self, option_id: str, session) -> None:
-        """
-        Executes a decision option and applies its consequences.
-        """
         if self.made:
-            raise ValueError("Decision has already been made.")
+            raise DecisionError("Decision already made")
+
+        if not self.is_available(session.time.now):
+            raise DecisionError("Decision expired")
 
         option = next(
             (opt for opt in self.options if opt.option_id == option_id),
@@ -68,38 +73,36 @@ class Decision:
         )
 
         if not option:
-            raise ValueError(f"Invalid decision option: {option_id}")
+            raise DecisionError(f"Invalid decision option: {option_id}")
 
-        # Resource validation
-        for resource_name, cost in option.resource_cost.items():
-            if session.resources.get(resource_name, 0) < cost:
-                raise ValueError(
-                    f"Insufficient resource: {resource_name}"
-                )
+        # Allocate resources via ResourcePool
+        if option.resource_cost:
+            session.resources.allocate(option.resource_cost)
 
-        # Deduct resources
-        for resource_name, cost in option.resource_cost.items():
-            session.resources[resource_name] -= cost
+        # Advance time
+        session.time.advance(
+            self.time_cost,
+            reason=f"Decision taken: {self.title}"
+        )
 
-        # Apply consequences
+        # Apply consequences (controlled)
         for consequence in option.consequences:
             self._apply_consequence(consequence, session)
 
         self.made = True
         self.selected_option = option
-        self.timestamp = datetime.utcnow()
+        self.made_at = session.time.now
+        self.logged_at = datetime.utcnow()
 
         session.log({
             "type": "decision",
             "decision_id": self.decision_id,
             "option_id": option.option_id,
-            "time": session.time
+            "time": self.made_at,
+            "title": self.title
         })
 
     def _apply_consequence(self, consequence: Dict[str, Any], session) -> None:
-        """
-        Applies a single consequence to the simulation session.
-        """
         action = consequence.get("action")
 
         if action == "add_event":
@@ -108,13 +111,10 @@ class Decision:
         elif action == "add_work":
             session.work_items.append(consequence["work"])
 
-        elif action == "modify_resource":
-            name = consequence["resource"]
-            delta = consequence.get("delta", 0)
-            session.resources[name] = session.resources.get(name, 0) + delta
-
         elif action == "log":
             session.log(consequence.get("entry", {}))
 
         else:
-            raise ValueError(f"Unknown consequence action: {action}")
+            raise DecisionError(
+                f"Unsupported consequence action: {action}"
+            )
