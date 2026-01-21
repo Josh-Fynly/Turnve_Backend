@@ -1,171 +1,149 @@
 """
 Turnve Core Simulation Engine – Exceptions
 
-This module defines all canonical exceptions used by the core simulation engine.
+All permanent, engine-level exception definitions live here.
 
 Design principles:
-- Engine-level only (no UI, no AI, no industry logic)
-- Predictable hierarchy
-- Stable contracts (do not casually rename)
+- Explicit naming
+- Stable semantics
+- Human-readable intent
+- No transient or UI-specific errors
 """
 
 
-class SimulationError(Exception):
+# -------------------------
+# Base Exception
+# -------------------------
+
+class TurnveEngineError(Exception):
     """
-    Base class for all simulation-related errors.
-    Every exception raised by the core engine must inherit from this.
+    Base class for all Turnve engine exceptions.
     """
     pass
 
 
-# Session lifecycle errors
+# -------------------------
+# Session Lifecycle Errors
+# -------------------------
 
-class SessionError(SimulationError):
-    """Errors related to the lifecycle or validity of a simulation session."""
+class SessionNotStartedError(TurnveEngineError):
+    """
+    Raised when an operation requires an active session,
+    but the session has not been started.
+    """
     pass
 
 
-class SessionNotStartedError(SessionError):
-    """Raised when an action is attempted before the session starts."""
+class SessionAlreadyStartedError(TurnveEngineError):
+    """
+    Raised when attempting to start a session that is already active.
+    """
     pass
 
 
-class SessionAlreadyEndedError(SessionError):
-    """Raised when an action is attempted after the session has ended."""
+class SessionAlreadyEndedError(TurnveEngineError):
+    """
+    Raised when attempting to modify a session that has ended.
+    """
     pass
 
 
-# Time progression errors
-
-class TimeError(SimulationError):
-    """Errors related to simulation time handling."""
+class EngineStateError(TurnveEngineError):
+    """
+    Raised when the engine enters or detects an invalid state.
+    """
     pass
 
 
-class TimeRegressionError(TimeError):
-    """Raised when time is forced to move backward."""
+# -------------------------
+# Time Errors
+# -------------------------
+
+class TimeError(TurnveEngineError):
+    """
+    Raised for invalid simulation time operations.
+    """
     pass
 
 
-class TimeOverflowError(TimeError):
-    """Raised when simulation time exceeds allowed bounds."""
+# -------------------------
+# Work Errors
+# -------------------------
+
+class WorkError(TurnveEngineError):
+    """
+    Raised when work violates simulation rules.
+    """
     pass
 
 
-# Work and task errors
-
-class WorkError(SimulationError):
-    """Errors related to work units, tasks, or deliverables."""
+class InvalidWorkTransitionError(WorkError):
+    """
+    Raised when a work item attempts an illegal state transition.
+    """
     pass
 
 
-class WorkNotFoundError(WorkError):
-    """Raised when referenced work cannot be found."""
+# -------------------------
+# Resource Errors
+# -------------------------
+
+class ResourceError(TurnveEngineError):
+    """
+    Raised when resource constraints are violated.
+    """
     pass
 
 
-class WorkAlreadyCompletedError(WorkError):
-    """Raised when an action targets work that is already completed."""
+class ResourceAllocationError(ResourceError):
+    """
+    Raised when required resources cannot be allocated.
+    """
     pass
 
 
-class InvalidWorkStateError(WorkError):
-    """Raised when work enters an illegal or impossible state."""
+# -------------------------
+# Decision Errors
+# -------------------------
+
+class DecisionError(TurnveEngineError):
+    """
+    Raised for invalid or illegal decision operations.
+    """
     pass
 
 
-# Decision-making errors
-
-class DecisionError(SimulationError):
-    """Errors related to decisions made within the simulation."""
+class DecisionExpiredError(DecisionError):
+    """
+    Raised when attempting to make a decision past its expiry time.
+    """
     pass
 
 
-class InvalidDecisionError(DecisionError):
-    """Raised when a decision violates simulation rules."""
+class DecisionAlreadyMadeError(DecisionError):
+    """
+    Raised when attempting to remake a decision.
+    """
     pass
 
 
-class DecisionContextMissingError(DecisionError):
-    """Raised when required information for a decision is missing."""
+# -------------------------
+# Event Errors
+# -------------------------
+
+class EventError(TurnveEngineError):
+    """
+    Raised when an event fails to execute correctly.
+    """
     pass
 
 
-# Resource management errors
+# -------------------------
+# Integrity Errors
+# -------------------------
 
-class ResourceError(SimulationError):
-    """Errors related to resource allocation or consumption."""
-    pass
-
-
-class InsufficientResourceError(ResourceError):
-    """Raised when required resources are unavailable."""
-    pass
-
-
-class ResourceLockedError(ResourceError):
-    """Raised when a resource is locked by another actor or process."""
-    pass
-
-
-class ResourceOveruseError(ResourceError):
-    """Raised when resource usage exceeds allowed limits."""
-    pass
-
-
-# Stakeholder interaction errors
-
-class StakeholderError(SimulationError):
-    """Errors related to stakeholder behavior or availability."""
-    pass
-
-
-class StakeholderUnavailableError(StakeholderError):
-    """Raised when a stakeholder cannot act or respond."""
-    pass
-
-
-class StakeholderConflictError(StakeholderError):
-    """Raised when stakeholder interests collide without resolution."""
-    pass
-
-
-# Event system errors
-
-class EventError(SimulationError):
-    """Errors related to simulation events."""
-    pass
-
-
-class EventTriggerError(EventError):
-    """Raised when an event cannot be triggered."""
-    pass
-
-
-class EventResolutionError(EventError):
-    """Raised when an event fails to resolve correctly."""
-    pass
-
-
-# Evidence and audit trail errors
-
-class EvidenceError(SimulationError):
-    """Errors related to logging or retrieving simulation evidence."""
-    pass
-
-
-class EvidenceIntegrityError(EvidenceError):
-    """Raised when evidence is missing, corrupted, or inconsistent."""
-    pass
-
-
-# Engine state and configuration errors
-
-class EngineStateError(SimulationError):
-    """Errors related to invalid global engine state."""
-    pass
-
-
-class EngineConfigurationError(EngineStateError):
-    """Raised when engine configuration is missing or invalid."""
+class SimulationIntegrityError(TurnveEngineError):
+    """
+    Raised when the simulation enters an inconsistent or corrupted state.
+    """
     pass
