@@ -3,6 +3,7 @@ from typing import List
 
 
 class TimeError(Exception):
+    """Raised when an invalid time operation occurs."""
     pass
 
 
@@ -10,7 +11,7 @@ class TimeError(Exception):
 class TimeTick:
     """
     Immutable record of time advancement.
-    Used for replay, audit, and evidence.
+    This is evidence: why time moved and by how much.
     """
     from_time: int
     to_time: int
@@ -19,12 +20,12 @@ class TimeTick:
 
 class SimulationClock:
     """
-    Authoritative time controller for a simulation session.
+    Authoritative time controller for a Turnve simulation.
 
-    Rules:
-    - Time only moves forward
-    - Time advances due to actions or system events
-    - Time advancement is recorded, not guessed
+    Principles:
+    - Time always moves forward
+    - Time moves because of work, delays, or events
+    - Every movement is recorded as evidence
     """
 
     def __init__(self, start_time: int = 0):
@@ -36,24 +37,26 @@ class SimulationClock:
 
     @property
     def now(self) -> int:
+        """Current simulation time (abstract units)."""
         return self._current_time
 
     @property
     def history(self) -> List[TimeTick]:
+        """Immutable copy of time advancement history."""
         return list(self._history)
 
     def advance(self, delta: int, reason: str) -> None:
         """
         Advance simulation time.
 
-        delta: number of time units to move forward
-        reason: human-readable explanation (e.g. 'code review delay')
+        delta: number of time units (e.g., hours, days, sprints)
+        reason: human-readable explanation (required)
         """
         if delta <= 0:
             raise TimeError("Time advance must be a positive integer")
 
-        if not reason:
-            raise TimeError("Time advance requires a reason")
+        if not reason or not reason.strip():
+            raise TimeError("Time advance requires a meaningful reason")
 
         old_time = self._current_time
         new_time = old_time + delta
@@ -61,7 +64,7 @@ class SimulationClock:
         tick = TimeTick(
             from_time=old_time,
             to_time=new_time,
-            reason=reason
+            reason=reason.strip()
         )
 
         self._current_time = new_time
