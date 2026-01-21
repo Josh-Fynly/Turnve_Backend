@@ -2,18 +2,23 @@
 Turnve Core Simulation Engine – Session
 
 A Session represents a single, continuous simulation run.
-It owns time, work, decisions, events, and evidence.
+It is the authoritative owner of time, resources, work, events, and evidence.
 
 Design principles:
-- Deterministic and auditable
-- No UI, no AI, no industry-specific logic
-- Safe for solo now, team-based later
+- Deterministic
+- Auditable
+- Engine-only (no UI, no AI, no industry logic)
 """
 
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 from datetime import datetime
 
+from .time import SimulationClock
+from .resource import ResourcePool
+from .work import WorkItem
+from .decision import Decision
+from .event import Event
 from .exceptions import (
     SessionNotStartedError,
     SessionAlreadyEndedError,
@@ -23,14 +28,7 @@ from .exceptions import (
 
 class Session:
     """
-    A simulation session is the authoritative container for:
-    - time progression
-    - work items
-    - decisions taken
-    - events triggered
-    - evidence generated
-
-    A session is immutable once ended.
+    Authoritative container for a simulation run.
     """
 
     def __init__(
@@ -42,22 +40,25 @@ class Session:
     ):
         self.id: UUID = session_id or uuid4()
 
-        self.industry: str = industry
-        self.role: str = role
-
-        self.actors: List[str] = actors or []
+        self.industry = industry
+        self.role = role
+        self.actors = actors or []
 
         self.started_at: Optional[datetime] = None
         self.ended_at: Optional[datetime] = None
-
-        self.current_time: int = 0  # abstract simulation time units
-
-        self.work_items: Dict[str, dict] = {}
-        self.decisions: List[dict] = []
-        self.events: List[dict] = []
-        self.evidence: List[dict] = []
-
         self._active: bool = False
+
+        # Core systems
+        self.time = SimulationClock(start_time=0)
+        self.resources = ResourcePool()
+
+        # State containers
+        self.work_items: Dict[str, WorkItem] = {}
+        self.decisions: List[Decision] = []
+        self.events: List[Event] = []
+
+        # Evidence log (append-only)
+        self.evidence: List[dict] = []
 
     # -------------------------
     # Lifecycle
@@ -70,90 +71,78 @@ class Session:
         self.started_at = datetime.utcnow()
         self._active = True
 
+        self.log({
+            "type": "session_started",
+            "industry": self.industry,
+            "role": self.role,
+        })
+
     def end(self) -> None:
         if not self._active:
-            raise SessionNotStartedError("Session has not started")
+            raise SessionNotStartedError("Session not active")
 
         self.ended_at = datetime.utcnow()
         self._active = False
+
+        self.log({
+            "type": "session_ended",
+        })
 
     def is_active(self) -> bool:
         return self._active
 
     # -------------------------
-    # Time control
+    # Work
     # -------------------------
 
-    def advance_time(self, delta: int) -> None:
+    def register_work(self, work: WorkItem) -> None:
         if not self._active:
-            raise SessionNotStartedError("Cannot advance time on inactive session")
+            raise SessionNotStartedError("Session not active")
 
-        if delta <= 0:
-            raise ValueError("Time delta must be positive")
+        self.work_items[work.id] = work
 
-        self.current_time += delta
-
-    # -------------------------
-    # Work management
-    # -------------------------
-
-    def register_work(self, work_id: str, payload: dict) -> None:
-        if not self._active:
-            raise SessionNotStartedError("Session must be active")
-
-        self.work_items[work_id] = payload
-
-    def complete_work(self, work_id: str) -> None:
-        if work_id not in self.work_items:
-            raise KeyError(f"Work item '{work_id}' not found")
-
-        self.work_items[work_id]["completed"] = True
-
-    # -------------------------
-    # Decisions & events
-    # -------------------------
-
-    def record_decision(self, decision: dict) -> None:
-        if not self._active:
-            raise SessionNotStartedError("Cannot record decision")
-
-        self.decisions.append({
-            **decision,
-            "time": self.current_time,
+        self.log({
+            "type": "work_registered",
+            "work_id": work.id,
+            "title": work.title,
         })
 
-    def trigger_event(self, event: dict) -> None:
-        if not self._active:
-            raise SessionNotStartedError("Cannot trigger event")
+    # -------------------------
+    # Decisions & Events
+    # -------------------------
 
-        self.events.append({
-            **event,
-            "time": self.current_time,
-        })
+    def register_decision(self, decision: Decision) -> None:
+        if not self._active:
+            raise SessionNotStartedError("Session not active")
+
+        self.decisions.append(decision)
+
+    def trigger_event(self, event: Event) -> None:
+        if not self._active:
+            raise SessionNotStartedError("Session not active")
+
+        self.events.append(event)
+        event.trigger(self)
 
     # -------------------------
     # Evidence
     # -------------------------
 
-    def log_evidence(self, record: dict) -> None:
+    def log(self, record: dict) -> None:
         """
-        Evidence is append-only and immutable once written.
+        Append-only evidence log.
         """
         self.evidence.append({
             **record,
-            "time": self.current_time,
+            "time": self.time.now,
             "session_id": str(self.id),
         })
 
     # -------------------------
-    # Snapshot / export
+    # Snapshot
     # -------------------------
 
     def snapshot(self) -> dict:
-        """
-        Returns a serializable snapshot of session state.
-        Useful for persistence, replay, or certification.
-        """
         return {
             "session_id": str(self.id),
             "industry": self.industry,
@@ -161,10 +150,11 @@ class Session:
             "actors": self.actors,
             "started_at": self.started_at,
             "ended_at": self.ended_at,
-            "current_time": self.current_time,
-            "work_items": self.work_items,
-            "decisions": self.decisions,
-            "events": self.events,
-            "evidence": self.evidence,
+            "time": self.time.now,
+            "resources": self.resources.snapshot(),
+            "work_items": list(self.work_items.keys()),
+            "decisions": [d.decision_id for d in self.decisions],
+            "events": [e.description for e in self.events],
+            "evidence_count": len(self.evidence),
             "active": self._active,
         }
