@@ -1,176 +1,169 @@
 """
 Turnve Core Simulation Engine – Engine
 
-The Engine is the authoritative orchestrator of a simulation session.
+The Engine is the orchestrator of a simulation run.
+It is industry-agnostic and owns no domain logic.
 
-Design principles:
-- Centralized control
-- Deterministic execution
-- Industry-agnostic
-- No AI, no UI, no scoring
+Responsibilities:
+- Create and manage sessions
+- Load industry modules
+- Generate work
+- Advance time
+- Apply rules
+- Trigger events
+- Record evidence
+
+Design guarantees:
+- Deterministic
+- Auditable
+- Extensible
+- No AI, no UI, no industry coupling
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
+import importlib
 
 from .session import Session
-from .time import SimulationClock
-from .work import WorkItem, WorkStateMachine
-from .resource import ResourcePool
-from .decision import Decision
-from .exceptions import (
-    EngineStateError,
-    SessionNotStartedError,
-    InvalidWorkTransitionError,
-)
+from .exceptions import EngineStateError
 
 
-class SimulationEngine:
+class Engine:
     """
-    The single source of truth for running a simulation.
-
-    All state mutations must pass through this engine.
+    The Engine coordinates a simulation session with an industry module.
     """
 
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, industry_key: str):
+        """
+        :param industry_key: e.g. "tech"
+        """
+        self.industry_key = industry_key
+        self.industry = self._load_industry(industry_key)
 
-        self.clock = SimulationClock(start_time=session.current_time)
-        self.resources = ResourcePool()
-
-        self._running: bool = False
+        self.session: Optional[Session] = None
+        self._initialized: bool = False
 
     # -------------------------
-    # Lifecycle
+    # Industry loading
     # -------------------------
+
+    def _load_industry(self, industry_key: str):
+        """
+        Dynamically loads an industry package.
+
+        Expected structure:
+        industries.<industry_key>.schema
+        industries.<industry_key>.work_generator
+        industries.<industry_key>.rules
+        industries.<industry_key>.events
+        """
+        try:
+            base = f"industries.{industry_key}"
+
+            return {
+                "schema": importlib.import_module(f"{base}.schema"),
+                "work_generator": importlib.import_module(f"{base}.work_generator"),
+                "rules": importlib.import_module(f"{base}.rules"),
+                "events": importlib.import_module(f"{base}.events"),
+            }
+        except ModuleNotFoundError as exc:
+            raise EngineStateError(
+                f"Industry '{industry_key}' is not properly configured"
+            ) from exc
+
+    # -------------------------
+    # Session lifecycle
+    # -------------------------
+
+    def create_session(
+        self,
+        industry: str,
+        role: str,
+        actors: Optional[list[str]] = None,
+    ) -> Session:
+        if self.session:
+            raise EngineStateError("Engine already has an active session")
+
+        self.session = Session(
+            industry=industry,
+            role=role,
+            actors=actors,
+        )
+        return self.session
 
     def start(self) -> None:
-        if self._running:
-            raise EngineStateError("Engine already running")
+        if not self.session:
+            raise EngineStateError("No session to start")
 
         self.session.start()
-        self.clock.start()
+        self._initialize_industry()
+        self._initialized = True
 
-        self._running = True
+    def end(self) -> None:
+        if not self.session or not self.session.is_active():
+            raise EngineStateError("No active session to end")
 
-        self.session.log_evidence({
-            "type": "engine_started",
-        })
-
-    def stop(self) -> None:
-        if not self._running:
-            raise EngineStateError("Engine not running")
-
-        self.clock.stop()
         self.session.end()
 
-        self._running = False
-
-        self.session.log_evidence({
-            "type": "engine_stopped",
-        })
-
-    def is_running(self) -> bool:
-        return self._running
-
     # -------------------------
-    # Time control
+    # Initialization
     # -------------------------
 
-    def advance_time(self, delta: int, reason: str) -> None:
-        if not self._running:
-            raise SessionNotStartedError("Engine is not running")
+    def _initialize_industry(self) -> None:
+        """
+        Industry bootstrapping:
+        - Validate schema
+        - Generate initial work
+        """
+        schema = self.industry["schema"]
+        generator = self.industry["work_generator"]
 
-        self.clock.advance(delta=delta, reason=reason)
-        self.session.current_time = self.clock.now
+        # Optional schema validation hook
+        if hasattr(schema, "validate"):
+            schema.validate()
 
-        self.session.log_evidence({
-            "type": "time_advanced",
-            "delta": delta,
-            "reason": reason,
-        })
+        # Initial work generation
+        if hasattr(generator, "generate_initial_work"):
+            work_items = generator.generate_initial_work(self.session)
 
-    # -------------------------
-    # Work orchestration
-    # -------------------------
-
-    def register_work(self, work: WorkItem) -> None:
-        if not self._running:
-            raise SessionNotStartedError("Engine is not running")
-
-        self.session.register_work(work.id, {
-            "work": work,
-            "status": work.status,
-        })
-
-        self.session.log_evidence({
-            "type": "work_registered",
-            "work_id": work.id,
-            "title": work.title,
-        })
-
-    def start_work(self, work: WorkItem) -> None:
-        if not self._running:
-            raise SessionNotStartedError("Engine is not running")
-
-        # Allocate required resources
-        self.resources.allocate(work.required_resources)
-
-        WorkStateMachine.transition(
-            work=work,
-            new_state="in_progress",
-            current_time=self.session.current_time,
-        )
-
-        self.session.log_evidence({
-            "type": "work_started",
-            "work_id": work.id,
-        })
-
-    def block_work(self, work: WorkItem, reason: str) -> None:
-        WorkStateMachine.transition(
-            work=work,
-            new_state="blocked",
-            current_time=self.session.current_time,
-        )
-
-        self.session.log_evidence({
-            "type": "work_blocked",
-            "work_id": work.id,
-            "reason": reason,
-        })
-
-    def complete_work(self, work: WorkItem) -> None:
-        WorkStateMachine.transition(
-            work=work,
-            new_state="completed",
-            current_time=self.session.current_time,
-        )
-
-        # Release resources
-        self.resources.release(work.required_resources)
-
-        self.session.complete_work(work.id)
-
-        self.session.log_evidence({
-            "type": "work_completed",
-            "work_id": work.id,
-        })
+            for work in work_items:
+                self.session.register_work(work["id"], work)
 
     # -------------------------
-    # Decisions
+    # Simulation step
     # -------------------------
 
-    def apply_decision(self, decision: Decision, option_id: str) -> None:
-        if not self._running:
-            raise SessionNotStartedError("Engine is not running")
+    def tick(self, time_delta: int = 1) -> None:
+        """
+        Advances the simulation by one step.
+        """
+        if not self.session or not self.session.is_active():
+            raise EngineStateError("Session is not active")
 
-        if not decision.is_available(self.session.current_time):
-            raise EngineStateError("Decision is no longer available")
+        if not self._initialized:
+            raise EngineStateError("Engine not initialized")
 
-        decision.make(option_id=option_id, session=self.session)
+        # Advance time
+        self.session.advance_time(time_delta)
 
-        self.session.log_evidence({
-            "type": "decision_applied",
-            "decision_id": decision.decision_id,
-            "option_id": option_id,
-        })
+        # Apply industry rules
+        rules = self.industry["rules"]
+        if hasattr(rules, "apply"):
+            rules.apply(self.session)
+
+        # Trigger events
+        events = self.industry["events"]
+        if hasattr(events, "check_and_trigger"):
+            triggered = events.check_and_trigger(self.session)
+
+            for event in triggered or []:
+                self.session.trigger_event(event)
+
+    # -------------------------
+    # Snapshot
+    # -------------------------
+
+    def snapshot(self) -> Dict[str, Any]:
+        if not self.session:
+            raise EngineStateError("No session to snapshot")
+
+        return self.session.snapshot()
