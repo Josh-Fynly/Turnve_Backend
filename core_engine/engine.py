@@ -1,106 +1,70 @@
 """
 Simulation Engine
 
-Central orchestration layer for Turnve simulations.
-Controls time, work generation, rules evaluation, and events.
+Coordinates the execution of a simulation session.
+This is the ONLY component allowed to mutate session state.
 """
 
-from typing import List
-
-from core_engine.exceptions import EngineError
-from core_engine.event import Event
-from core_engine.decision import DecisionRule
-from core_engine.evidence import EvidenceLog
+from typing import Callable, List, Any
+from core_engine.session import Session
 
 
 class SimulationEngine:
+    """
+    Orchestrates simulation ticks.
+    """
+
     def __init__(
         self,
-        session,
-        work_generator,
-        rules: List[DecisionRule] | None = None,
-        events: List[Event] | None = None,
+        session: Session,
+        work_generator: Callable[[Session], List[Any]],
+        event_generator: Callable[[Session], List[Any]],
+        rule_evaluator: Callable[[Session, List[Any]], List[Any]],
+        decision_executor: Callable[[Session, List[Any]], None],
     ):
         self.session = session
         self.work_generator = work_generator
-        self.rules = rules or []
-        self.events = events or []
+        self.event_generator = event_generator
+        self.rule_evaluator = rule_evaluator
+        self.decision_executor = decision_executor
 
     # -------------------------
-    # Engine Tick
+    # Core Loop
     # -------------------------
 
-    def tick(self):
+    def tick(self) -> None:
         """
-        Advance the simulation by one time unit.
+        Execute a single simulation tick.
         """
 
-        try:
-            self._advance_time()
-            self._generate_work()
-            self._apply_rules()
-            self._trigger_events()
-        except Exception as exc:
-            raise EngineError(f"Engine tick failed: {exc}") from exc
+        # 1. Generate work
+        new_work_items = self.work_generator(self.session)
+        for work in new_work_items:
+            self.session.add_work(work.work_id, work)
+
+        # 2. Generate events
+        events = self.event_generator(self.session)
+        for event in events:
+            self.session.record_event(event)
+
+        # 3. Evaluate rules → decisions
+        decisions = self.rule_evaluator(self.session, events)
+        for decision in decisions:
+            self.session.record_decision(decision)
+
+        # 4. Apply decisions
+        self.decision_executor(self.session, decisions)
+
+        # 5. Advance time
+        self.session.advance_time()
 
     # -------------------------
-    # Time
+    # Run helpers
     # -------------------------
 
-    def _advance_time(self):
-        self.session.current_time += 1
-        self.session.log(
-            EvidenceLog.system(
-                f"Time advanced to {self.session.current_time}"
-            )
-        )
-
-    # -------------------------
-    # Work Generation
-    # -------------------------
-
-    def _generate_work(self):
-        new_work = self.work_generator(self.session)
-
-        for item in new_work:
-            self.session.add_work(item)
-            self.session.log(
-                EvidenceLog.work_created(item)
-            )
-
-    # -------------------------
-    # Rules Evaluation
-    # -------------------------
-
-    def _apply_rules(self):
-        for rule in self.rules:
-            if rule.applies(self.session):
-                decision = rule.evaluate(self.session)
-                if decision:
-                    self.session.apply_decision(decision)
-                    self.session.log(
-                        EvidenceLog.decision(decision)
-                    )
-
-    # -------------------------
-    # Events
-    # -------------------------
-
-    def _trigger_events(self):
-        for event in self.events:
-            if event.should_trigger(self.session):
-                event.trigger(self.session)
-                self.session.log(
-                    EvidenceLog.event(event)
-                )
-
-    # -------------------------
-    # Run Loop
-    # -------------------------
-
-    def run(self, ticks: int):
+    def run(self, ticks: int) -> None:
         """
-        Run the simulation for N ticks.
+        Run multiple simulation ticks.
         """
         for _ in range(ticks):
             self.tick()
