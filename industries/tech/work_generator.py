@@ -1,118 +1,173 @@
 """
-Tech Industry – Work Generator
+Tech Industry Work Generator
 
-Responsible for generating initial and project-based work
-for a tech simulation session.
-
-This module contains NO engine logic.
+Generates deterministic, phase-based work items
+for software engineering projects.
 """
 
-from typing import List, Dict
+from typing import List
+
+from core_engine.work import WorkFactory, WorkItem
 
 
-def generate_initial_work(session) -> List[Dict]:
-    """
-    Generates the baseline work items for a Tech simulation.
+# -------------------------
+# Discovery Phase
+# -------------------------
 
-    These are high-level, role-aware work units that can later
-    expand into full projects (e.g. mobile payments app).
-    """
-
-    role = session.role.lower()
-
-    work_items: List[Dict] = []
-
-    # -------------------------
-    # Universal onboarding work
-    # -------------------------
-
-    work_items.append({
-        "id": "tech_onboarding",
-        "title": "Project Onboarding & Context Setup",
-        "category": "foundation",
-        "description": (
-            "Understand the product goal, constraints, stakeholders, "
-            "and success criteria."
+def discovery_work(created_at: int) -> List[WorkItem]:
+    return [
+        WorkFactory.create(
+            title="Define product requirements",
+            description="Clarify user needs, constraints, and success metrics.",
+            estimated_effort=3,
+            required_resources={"analyst": 1},
+            priority=1,
+            created_at=created_at,
         ),
-        "required_role": None,
-        "completed": False,
-    })
-
-    # -------------------------
-    # Junior Project Manager
-    # -------------------------
-
-    if role in {"junior_project_manager", "project_manager"}:
-        work_items.extend([
-            {
-                "id": "define_scope",
-                "title": "Define Project Scope",
-                "category": "planning",
-                "description": (
-                    "Translate business goals into a clear project scope, "
-                    "deliverables, and exclusions."
-                ),
-                "required_role": "junior_project_manager",
-                "completed": False,
-            },
-            {
-                "id": "create_work_breakdown",
-                "title": "Create Work Breakdown Structure",
-                "category": "planning",
-                "description": (
-                    "Break the project into manageable components, phases, "
-                    "and responsibilities."
-                ),
-                "required_role": "junior_project_manager",
-                "completed": False,
-            },
-        ])
-
-    # -------------------------
-    # Software Engineering Track
-    # -------------------------
-
-    if role in {"software_engineer", "fullstack_engineer"}:
-        work_items.extend([
-            {
-                "id": "system_design",
-                "title": "System Architecture Design",
-                "category": "engineering",
-                "description": (
-                    "Design the system architecture, services, data flow, "
-                    "and integration boundaries."
-                ),
-                "required_role": "software_engineer",
-                "completed": False,
-            },
-            {
-                "id": "repo_setup",
-                "title": "Repository Setup & Version Control",
-                "category": "engineering",
-                "description": (
-                    "Create or connect a source code repository, define "
-                    "branching strategy, and initialize the codebase."
-                ),
-                "required_role": "software_engineer",
-                "completed": False,
-                "capabilities": ["connect_repo"],
-            },
-        ])
-
-    # -------------------------
-    # Deployment & Delivery
-    # -------------------------
-
-    work_items.append({
-        "id": "deployment_strategy",
-        "title": "Deployment & Release Strategy",
-        "category": "delivery",
-        "description": (
-            "Plan deployment environments, CI/CD pipeline, and release "
-            "process."
+        WorkFactory.create(
+            title="Create Work Canvas",
+            description="Define scope, assumptions, risks, and milestones.",
+            estimated_effort=2,
+            required_resources={"pm": 1},
+            priority=1,
+            created_at=created_at,
         ),
-        "required_role": None,
-        "completed": False,
-    })
+    ]
 
-    return work_items
+
+# -------------------------
+# Architecture Phase
+# -------------------------
+
+def architecture_work(created_at: int) -> List[WorkItem]:
+    return [
+        WorkFactory.create(
+            title="Design system architecture",
+            description="Define services, data flows, and technology stack.",
+            estimated_effort=5,
+            required_resources={"architect": 1},
+            priority=2,
+            created_at=created_at,
+        ),
+        WorkFactory.create(
+            title="Select deployment strategy",
+            description="Decide hosting, CI/CD, and release model.",
+            estimated_effort=3,
+            required_resources={"devops": 1},
+            priority=2,
+            created_at=created_at,
+        ),
+    ]
+
+
+# -------------------------
+# Implementation Phase
+# -------------------------
+
+def implementation_work(created_at: int, repo_connected: bool) -> List[WorkItem]:
+    if not repo_connected:
+        return []
+
+    return [
+        WorkFactory.create(
+            title="Initialize repository",
+            description="Set up repository structure, linting, and CI.",
+            estimated_effort=2,
+            required_resources={"engineer": 1},
+            priority=3,
+            created_at=created_at,
+        ),
+        WorkFactory.create(
+            title="Implement core features",
+            description="Develop primary application functionality.",
+            estimated_effort=8,
+            required_resources={"engineer": 2},
+            priority=3,
+            created_at=created_at,
+        ),
+    ]
+
+
+# -------------------------
+# Delivery Phase
+# -------------------------
+
+def delivery_work(created_at: int) -> List[WorkItem]:
+    return [
+        WorkFactory.create(
+            title="Deploy to production",
+            description="Release application using approved deployment plan.",
+            estimated_effort=4,
+            required_resources={"devops": 1},
+            priority=4,
+            created_at=created_at,
+        ),
+        WorkFactory.create(
+            title="Monitor and stabilize",
+            description="Observe system health and resolve initial issues.",
+            estimated_effort=3,
+            required_resources={"engineer": 1},
+            priority=4,
+            created_at=created_at,
+        ),
+    ]
+
+
+# -------------------------
+# Governance Phase (JPM)
+# -------------------------
+
+def governance_work(created_at: int) -> List[WorkItem]:
+    return [
+        WorkFactory.create(
+            title="JPM phase review",
+            description="Junior Project Manager reviews progress and approves next phase.",
+            estimated_effort=1,
+            required_resources={"jpm": 1},
+            priority=0,
+            created_at=created_at,
+        )
+    ]
+
+
+# -------------------------
+# Master Generator
+# -------------------------
+
+def generate_tech_work(session) -> List[WorkItem]:
+    """
+    Entry point used by the engine.
+    Generates work based on session state.
+    """
+
+    now = session.current_time
+    work: List[WorkItem] = []
+
+    # Always allow discovery
+    if not session.flags.get("discovery_done"):
+        work.extend(discovery_work(now))
+
+    # Architecture after discovery
+    if session.flags.get("discovery_done") and not session.flags.get("architecture_ready"):
+        work.extend(architecture_work(now))
+
+    # Implementation requires repo + architecture
+    if (
+        session.flags.get("architecture_ready")
+        and not session.flags.get("implementation_done")
+    ):
+        work.extend(
+            implementation_work(
+                now,
+                repo_connected=session.flags.get("repo_connected", False),
+            )
+        )
+
+    # Delivery after implementation
+    if session.flags.get("implementation_done") and not session.flags.get("delivery_done"):
+        work.extend(delivery_work(now))
+
+    # JPM governance always applies
+    work.extend(governance_work(now))
+
+    return work
