@@ -1,112 +1,90 @@
 """
 Tech Industry Rules
 
-Enforces realism constraints for Tech projects.
-Rules do NOT execute work.
-They validate state, sequencing, and eligibility.
+Rules evaluate session state and completed work to determine:
+- which events should fire
+- which categories of work are unlocked
 """
 
 from typing import List
-from core_engine.work import WorkItem
-from core_engine.exceptions import EngineStateError
+
+from industries.tech.events import (
+    architecture_finalized_event,
+    deployment_strategy_approved_event,
+)
+from core_engine.event import Event
 
 
 # -------------------------
-# Rule 1: Repository Required for Coding Work
+# Rule: Repository Required
 # -------------------------
 
-CODING_CATEGORIES = {
-    "frontend_development",
-    "backend_development",
-    "mobile_development",
-    "database_design",
-}
-
-
-def require_repository_for_coding(
-    work_items: List[WorkItem],
-    repository_connected: bool,
-) -> None:
+def repo_required_for_engineering(session) -> bool:
     """
-    Prevents coding work from starting without a repository.
+    Engineering work requires a connected repository.
     """
-
-    if not repository_connected:
-        for work in work_items:
-            if any(cat in work.description.lower() for cat in CODING_CATEGORIES):
-                raise EngineStateError(
-                    "Coding work cannot begin without a connected repository"
-                )
+    return session.flags.get("repo_connected", False)
 
 
 # -------------------------
-# Rule 2: Planning Must Precede Development
+# Rule: Architecture Before Build
 # -------------------------
 
-def enforce_planning_before_execution(work_items: List[WorkItem]) -> None:
+def architecture_required_before_build(session) -> bool:
     """
-    Ensures planning work is completed before development starts.
+    Prevents implementation work before architecture is finalized.
     """
-
-    planning_done = any(
-        "scope" in work.title.lower() or "planning" in work.title.lower()
-        for work in work_items
-        if work.status == "completed"
-    )
-
-    for work in work_items:
-        if work.status == "in_progress" and not planning_done:
-            if "implement" in work.title.lower() or "development" in work.title.lower():
-                raise EngineStateError(
-                    "Development cannot start before planning is completed"
-                )
+    return session.flags.get("architecture_ready", False)
 
 
 # -------------------------
-# Rule 3: Deployment Requires Testing
+# Rule: Deployment Requires Build Completion
 # -------------------------
 
-def require_testing_before_deployment(work_items: List[WorkItem]) -> None:
+def deployment_requires_build(session) -> bool:
     """
-    Prevents deployment unless testing has been completed.
+    Deployment is allowed only after implementation milestones exist.
     """
-
-    testing_done = any(
-        "testing" in work.title.lower() and work.status == "completed"
-        for work in work_items
-    )
-
-    for work in work_items:
-        if "deploy" in work.title.lower() and work.status == "in_progress":
-            if not testing_done:
-                raise EngineStateError(
-                    "Deployment cannot proceed before testing is completed"
-                )
+    return session.evidence.has_category("work_completion")
 
 
 # -------------------------
-# Rule 4: JPM Cannot Execute Engineering Work
+# Rule: JPM Phase Approval
 # -------------------------
 
-def enforce_role_boundaries(
-    role: str,
-    work: WorkItem,
-) -> None:
+def jpm_approval_required(session, phase: str) -> bool:
     """
-    Ensures Junior Project Managers do not perform engineering tasks.
+    Junior Project Manager must approve phase transitions.
+    """
+    approvals = session.flags.get("jpm_approvals", set())
+    return phase in approvals
+
+
+# -------------------------
+# Rule: Evaluate Phase Transitions
+# -------------------------
+
+def evaluate_phase_events(session) -> List[Event]:
+    """
+    Determines which phase-related events should be triggered
+    based on accumulated evidence and flags.
     """
 
-    if role == "Junior Project Manager":
-        forbidden_keywords = [
-            "implement",
-            "deploy",
-            "code",
-            "backend",
-            "frontend",
-            "mobile",
-        ]
+    events: List[Event] = []
 
-        if any(word in work.title.lower() for word in forbidden_keywords):
-            raise EngineStateError(
-                "Junior Project Manager cannot execute engineering work"
-            )
+    # Architecture finalized
+    if (
+        not session.flags.get("architecture_ready")
+        and session.evidence.has_category("architecture")
+    ):
+        events.append(architecture_finalized_event())
+
+    # Deployment strategy approved
+    if (
+        session.flags.get("architecture_ready")
+        and not session.flags.get("deployment_ready")
+        and session.evidence.has_category("delivery")
+    ):
+        events.append(deployment_strategy_approved_event())
+
+    return events
