@@ -1,169 +1,106 @@
 """
-Turnve Core Simulation Engine – Engine
+Simulation Engine
 
-The Engine is the orchestrator of a simulation run.
-It is industry-agnostic and owns no domain logic.
-
-Responsibilities:
-- Create and manage sessions
-- Load industry modules
-- Generate work
-- Advance time
-- Apply rules
-- Trigger events
-- Record evidence
-
-Design guarantees:
-- Deterministic
-- Auditable
-- Extensible
-- No AI, no UI, no industry coupling
+Central orchestration layer for Turnve simulations.
+Controls time, work generation, rules evaluation, and events.
 """
 
-from typing import Any, Dict, Optional
-import importlib
+from typing import List
 
-from .session import Session
-from .exceptions import EngineStateError
+from core_engine.exceptions import EngineError
+from core_engine.event import Event
+from core_engine.decision import DecisionRule
+from core_engine.evidence import EvidenceLog
 
 
-class Engine:
-    """
-    The Engine coordinates a simulation session with an industry module.
-    """
-
-    def __init__(self, industry_key: str):
-        """
-        :param industry_key: e.g. "tech"
-        """
-        self.industry_key = industry_key
-        self.industry = self._load_industry(industry_key)
-
-        self.session: Optional[Session] = None
-        self._initialized: bool = False
-
-    # -------------------------
-    # Industry loading
-    # -------------------------
-
-    def _load_industry(self, industry_key: str):
-        """
-        Dynamically loads an industry package.
-
-        Expected structure:
-        industries.<industry_key>.schema
-        industries.<industry_key>.work_generator
-        industries.<industry_key>.rules
-        industries.<industry_key>.events
-        """
-        try:
-            base = f"industries.{industry_key}"
-
-            return {
-                "schema": importlib.import_module(f"{base}.schema"),
-                "work_generator": importlib.import_module(f"{base}.work_generator"),
-                "rules": importlib.import_module(f"{base}.rules"),
-                "events": importlib.import_module(f"{base}.events"),
-            }
-        except ModuleNotFoundError as exc:
-            raise EngineStateError(
-                f"Industry '{industry_key}' is not properly configured"
-            ) from exc
-
-    # -------------------------
-    # Session lifecycle
-    # -------------------------
-
-    def create_session(
+class SimulationEngine:
+    def __init__(
         self,
-        industry: str,
-        role: str,
-        actors: Optional[list[str]] = None,
-    ) -> Session:
-        if self.session:
-            raise EngineStateError("Engine already has an active session")
+        session,
+        work_generator,
+        rules: List[DecisionRule] | None = None,
+        events: List[Event] | None = None,
+    ):
+        self.session = session
+        self.work_generator = work_generator
+        self.rules = rules or []
+        self.events = events or []
 
-        self.session = Session(
-            industry=industry,
-            role=role,
-            actors=actors,
+    # -------------------------
+    # Engine Tick
+    # -------------------------
+
+    def tick(self):
+        """
+        Advance the simulation by one time unit.
+        """
+
+        try:
+            self._advance_time()
+            self._generate_work()
+            self._apply_rules()
+            self._trigger_events()
+        except Exception as exc:
+            raise EngineError(f"Engine tick failed: {exc}") from exc
+
+    # -------------------------
+    # Time
+    # -------------------------
+
+    def _advance_time(self):
+        self.session.current_time += 1
+        self.session.log(
+            EvidenceLog.system(
+                f"Time advanced to {self.session.current_time}"
+            )
         )
-        return self.session
-
-    def start(self) -> None:
-        if not self.session:
-            raise EngineStateError("No session to start")
-
-        self.session.start()
-        self._initialize_industry()
-        self._initialized = True
-
-    def end(self) -> None:
-        if not self.session or not self.session.is_active():
-            raise EngineStateError("No active session to end")
-
-        self.session.end()
 
     # -------------------------
-    # Initialization
+    # Work Generation
     # -------------------------
 
-    def _initialize_industry(self) -> None:
+    def _generate_work(self):
+        new_work = self.work_generator(self.session)
+
+        for item in new_work:
+            self.session.add_work(item)
+            self.session.log(
+                EvidenceLog.work_created(item)
+            )
+
+    # -------------------------
+    # Rules Evaluation
+    # -------------------------
+
+    def _apply_rules(self):
+        for rule in self.rules:
+            if rule.applies(self.session):
+                decision = rule.evaluate(self.session)
+                if decision:
+                    self.session.apply_decision(decision)
+                    self.session.log(
+                        EvidenceLog.decision(decision)
+                    )
+
+    # -------------------------
+    # Events
+    # -------------------------
+
+    def _trigger_events(self):
+        for event in self.events:
+            if event.should_trigger(self.session):
+                event.trigger(self.session)
+                self.session.log(
+                    EvidenceLog.event(event)
+                )
+
+    # -------------------------
+    # Run Loop
+    # -------------------------
+
+    def run(self, ticks: int):
         """
-        Industry bootstrapping:
-        - Validate schema
-        - Generate initial work
+        Run the simulation for N ticks.
         """
-        schema = self.industry["schema"]
-        generator = self.industry["work_generator"]
-
-        # Optional schema validation hook
-        if hasattr(schema, "validate"):
-            schema.validate()
-
-        # Initial work generation
-        if hasattr(generator, "generate_initial_work"):
-            work_items = generator.generate_initial_work(self.session)
-
-            for work in work_items:
-                self.session.register_work(work["id"], work)
-
-    # -------------------------
-    # Simulation step
-    # -------------------------
-
-    def tick(self, time_delta: int = 1) -> None:
-        """
-        Advances the simulation by one step.
-        """
-        if not self.session or not self.session.is_active():
-            raise EngineStateError("Session is not active")
-
-        if not self._initialized:
-            raise EngineStateError("Engine not initialized")
-
-        # Advance time
-        self.session.advance_time(time_delta)
-
-        # Apply industry rules
-        rules = self.industry["rules"]
-        if hasattr(rules, "apply"):
-            rules.apply(self.session)
-
-        # Trigger events
-        events = self.industry["events"]
-        if hasattr(events, "check_and_trigger"):
-            triggered = events.check_and_trigger(self.session)
-
-            for event in triggered or []:
-                self.session.trigger_event(event)
-
-    # -------------------------
-    # Snapshot
-    # -------------------------
-
-    def snapshot(self) -> Dict[str, Any]:
-        if not self.session:
-            raise EngineStateError("No session to snapshot")
-
-        return self.session.snapshot()
+        for _ in range(ticks):
+            self.tick()
