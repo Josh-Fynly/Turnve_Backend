@@ -21,9 +21,6 @@ class SimulationEngine:
     """
 
     def __init__(self, industry_name: str):
-        """
-        industry_name: e.g. 'tech'
-        """
         self.industry_name = industry_name
         self.industry = self._load_industry(industry_name)
 
@@ -49,6 +46,7 @@ class SimulationEngine:
             role=role,
         )
         session.start()
+        self.initialize(session)
         return session
 
     def end_session(self, session: Session) -> None:
@@ -61,30 +59,33 @@ class SimulationEngine:
 
     def step(self, session: Session) -> None:
         """
-        Executes a single simulation step:
-        - evaluate rules
-        - apply decisions
-        - generate events
-        - advance time
+        Executes a single simulation tick.
+        Order is deterministic and enforced.
         """
 
         if not session.is_active():
             raise InvalidStateError("Cannot step inactive session")
 
+        if not session.can_step():
+            raise InvalidStateError("Session is not in a steppable state")
+
         try:
+            current_tick = session.current_time()
+
             # 1. Evaluate rules → decisions
             decisions = self._evaluate_rules(session)
+            decisions = sorted(decisions, key=lambda d: d.priority)
 
-            # 2. Apply decisions
+            # 2. Record decisions (execution deferred)
             for decision in decisions:
                 decision.validate()
+                decision.bind_time(current_tick)
                 session.record_decision(decision)
-
-                # Decision execution is intentionally deferred
-                # (future: executor layer)
 
             # 3. Generate events
             events = self._generate_events(session)
+            events = sorted(events, key=lambda e: e.severity)
+
             for event in events:
                 session.record_event(event)
 
@@ -92,7 +93,6 @@ class SimulationEngine:
             session.advance_time(1)
 
         except SimulationHalt:
-            # Hard stop, preserve evidence
             session.end()
             raise
 
@@ -102,8 +102,8 @@ class SimulationEngine:
 
     def initialize(self, session: Session) -> None:
         """
-        Called once after session creation.
-        Generates initial work.
+        Called exactly once after session start.
+        Generates initial work canvas.
         """
         if hasattr(self.industry, "generate_initial_work"):
             self.industry.generate_initial_work(session)
