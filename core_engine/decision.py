@@ -1,58 +1,73 @@
 """
-Decision Models
+Decision represents a proposed action produced by rules.
 
-A Decision represents an intentional action derived from rules,
-humans, or AI. Decisions do NOT mutate session state directly.
+Decisions are validated, recorded, but NOT executed.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
 from enum import Enum
+from typing import Optional
+
+from core_engine.exceptions import InvalidStateError
 
 
-class DecisionType(str, Enum):
-    APPROVE_WORK = "approve_work"
-    REJECT_WORK = "reject_work"
-    ASSIGN_RESOURCE = "assign_resource"
-    REALLOCATE_RESOURCE = "reallocate_resource"
-    ESCALATE = "escalate"
-    DELAY = "delay"
-    CANCEL = "cancel"
-    COMPLETE_WORK = "complete_work"
+class RiskLevel(Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
-@dataclass(frozen=True)
 class Decision:
-    """
-    Immutable decision object.
-    """
+    def __init__(
+        self,
+        *,
+        decision_id: str,
+        title: str,
+        description: str,
+        actor_role: str,
+        time: int,
+        risk_level: RiskLevel,
+        confidence: float,
+    ):
+        self.decision_id = decision_id
+        self.title = title
+        self.description = description
+        self.actor_role = actor_role
+        self.time = time
+        self.risk_level = risk_level
+        self.confidence = confidence
 
-    decision_type: DecisionType
-    target_id: str
-    payload: Dict[str, Any] = field(default_factory=dict)
-    reason: Optional[str] = None
-    issued_by: Optional[str] = None  # human, role, rule, or AI
+        self._validated = False
+
+    # -------------------------
+    # Validation
+    # -------------------------
 
     def validate(self) -> None:
-        """
-        Validates decision structure only.
-        Raises ValueError if invalid.
-        """
+        if self._validated:
+            raise InvalidStateError("Decision already validated")
 
-        if not self.target_id:
-            raise ValueError("Decision must reference a target_id")
+        if not self.decision_id:
+            raise InvalidStateError("Decision must have an ID")
 
-        if not isinstance(self.payload, dict):
-            raise ValueError("Decision payload must be a dictionary")
+        if not self.title:
+            raise InvalidStateError("Decision must have a title")
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize decision for storage, replay, or inspection.
-        """
-        return {
-            "decision_type": self.decision_type.value,
-            "target_id": self.target_id,
-            "payload": self.payload,
-            "reason": self.reason,
-            "issued_by": self.issued_by,
-        }
+        if not self.actor_role:
+            raise InvalidStateError("Decision must specify actor role")
+
+        if self.time < 0:
+            raise InvalidStateError("Decision time cannot be negative")
+
+        if not (0.0 <= self.confidence <= 1.0):
+            raise InvalidStateError("Decision confidence must be between 0 and 1")
+
+        self._validated = True
+
+    # -------------------------
+    # Read-Only Properties
+    # -------------------------
+
+    @property
+    def validated(self) -> bool:
+        return self._validated
