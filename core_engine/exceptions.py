@@ -1,149 +1,82 @@
 """
-Turnve Core Simulation Engine – Exceptions
+Core Engine Exceptions
 
-All permanent, engine-level exception definitions live here.
-
-Design principles:
-- Explicit naming
-- Stable semantics
-- Human-readable intent
-- No transient or UI-specific errors
+These exceptions define failure semantics for the Turnve simulation engine.
+They are intentionally framework-agnostic and side-effect free.
 """
 
 
-# -------------------------
-# Base Exception
-# -------------------------
-
-class TurnveEngineError(Exception):
+class TurnveError(Exception):
     """
-    Base class for all Turnve engine exceptions.
+    Base class for all Turnve-related errors.
     """
     pass
 
 
-# -------------------------
-# Session Lifecycle Errors
-# -------------------------
+# =========================
+# Simulation Integrity
+# =========================
 
-class SessionNotStartedError(TurnveEngineError):
+class SimulationHalt(TurnveError):
     """
-    Raised when an operation requires an active session,
-    but the session has not been started.
-    """
-    pass
-
-
-class SessionAlreadyStartedError(TurnveEngineError):
-    """
-    Raised when attempting to start a session that is already active.
+    Raised when the simulation must stop immediately
+    to prevent invalid or unrecoverable state.
     """
     pass
 
 
-class SessionAlreadyEndedError(TurnveEngineError):
+class InvalidStateError(TurnveError):
     """
-    Raised when attempting to modify a session that has ended.
-    """
-    pass
-
-
-class EngineStateError(TurnveEngineError):
-    """
-    Raised when the engine enters or detects an invalid state.
+    Raised when session state becomes logically inconsistent.
     """
     pass
 
 
-# -------------------------
-# Time Errors
-# -------------------------
+# =========================
+# Decision & Work Errors
+# =========================
 
-class TimeError(TurnveEngineError):
+class DecisionError(TurnveError):
     """
-    Raised for invalid simulation time operations.
-    """
-    pass
-
-
-# -------------------------
-# Work Errors
-# -------------------------
-
-class WorkError(TurnveEngineError):
-    """
-    Raised when work violates simulation rules.
+    Raised when a decision is invalid or cannot be applied.
     """
     pass
 
 
-class InvalidWorkTransitionError(WorkError):
+class UnauthorizedDecisionError(DecisionError):
     """
-    Raised when a work item attempts an illegal state transition.
-    """
-    pass
-
-
-# -------------------------
-# Resource Errors
-# -------------------------
-
-class ResourceError(TurnveEngineError):
-    """
-    Raised when resource constraints are violated.
+    Raised when a role attempts an action it is not permitted to perform.
     """
     pass
 
 
-class ResourceAllocationError(ResourceError):
+class WorkConflictError(TurnveError):
     """
-    Raised when required resources cannot be allocated.
-    """
-    pass
-
-
-# -------------------------
-# Decision Errors
-# -------------------------
-
-class DecisionError(TurnveEngineError):
-    """
-    Raised for invalid or illegal decision operations.
+    Raised when work items conflict in timing, dependency, or ownership.
     """
     pass
 
 
-class DecisionExpiredError(DecisionError):
+class ResourceAllocationError(TurnveError):
     """
-    Raised when attempting to make a decision past its expiry time.
-    """
-    pass
-
-
-class DecisionAlreadyMadeError(DecisionError):
-    """
-    Raised when attempting to remake a decision.
+    Raised when resources cannot be assigned or reallocated safely.
     """
     pass
 
 
-# -------------------------
-# Event Errors
-# -------------------------
+# =========================
+# Rules & Configuration
+# =========================
 
-class EventError(TurnveEngineError):
+class RuleViolationError(TurnveError):
     """
-    Raised when an event fails to execute correctly.
+    Raised when a rule is violated during evaluation or execution.
     """
     pass
 
 
-# -------------------------
-# Integrity Errors
-# -------------------------
-
-class SimulationIntegrityError(TurnveEngineError):
+class InvalidConfigurationError(TurnveError):
     """
-    Raised when the simulation enters an inconsistent or corrupted state.
+    Raised when industry or engine configuration is invalid.
     """
     pass
