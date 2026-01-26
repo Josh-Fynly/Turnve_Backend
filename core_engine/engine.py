@@ -1,70 +1,119 @@
 """
-Simulation Engine
+Turnve Core Simulation Engine
 
-Coordinates the execution of a simulation session.
-This is the ONLY component allowed to mutate session state.
+The Engine orchestrates simulation flow.
+It is the ONLY authority allowed to mutate Session state.
 """
 
-from typing import Callable, List, Any
+from typing import Any, List
+import importlib
+
 from core_engine.session import Session
+from core_engine.exceptions import (
+    SimulationHalt,
+    InvalidStateError,
+)
 
 
 class SimulationEngine:
     """
-    Orchestrates simulation ticks.
+    Orchestrates a single simulation session.
     """
 
-    def __init__(
-        self,
-        session: Session,
-        work_generator: Callable[[Session], List[Any]],
-        event_generator: Callable[[Session], List[Any]],
-        rule_evaluator: Callable[[Session, List[Any]], List[Any]],
-        decision_executor: Callable[[Session, List[Any]], None],
-    ):
-        self.session = session
-        self.work_generator = work_generator
-        self.event_generator = event_generator
-        self.rule_evaluator = rule_evaluator
-        self.decision_executor = decision_executor
+    def __init__(self, industry_name: str):
+        """
+        industry_name: e.g. 'tech'
+        """
+        self.industry_name = industry_name
+        self.industry = self._load_industry(industry_name)
 
     # -------------------------
-    # Core Loop
+    # Industry Loading
     # -------------------------
 
-    def tick(self) -> None:
-        """
-        Execute a single simulation tick.
-        """
-
-        # 1. Generate work
-        new_work_items = self.work_generator(self.session)
-        for work in new_work_items:
-            self.session.add_work(work.work_id, work)
-
-        # 2. Generate events
-        events = self.event_generator(self.session)
-        for event in events:
-            self.session.record_event(event)
-
-        # 3. Evaluate rules → decisions
-        decisions = self.rule_evaluator(self.session, events)
-        for decision in decisions:
-            self.session.record_decision(decision)
-
-        # 4. Apply decisions
-        self.decision_executor(self.session, decisions)
-
-        # 5. Advance time
-        self.session.advance_time()
+    def _load_industry(self, industry_name: str):
+        try:
+            return importlib.import_module(f"industries.{industry_name}")
+        except ModuleNotFoundError as e:
+            raise InvalidStateError(
+                f"Industry '{industry_name}' could not be loaded"
+            ) from e
 
     # -------------------------
-    # Run helpers
+    # Session Lifecycle
     # -------------------------
 
-    def run(self, ticks: int) -> None:
+    def create_session(self, role: str) -> Session:
+        session = Session(
+            industry=self.industry_name,
+            role=role,
+        )
+        session.start()
+        return session
+
+    def end_session(self, session: Session) -> None:
+        if session.is_active():
+            session.end()
+
+    # -------------------------
+    # Simulation Step
+    # -------------------------
+
+    def step(self, session: Session) -> None:
         """
-        Run multiple simulation ticks.
+        Executes a single simulation step:
+        - evaluate rules
+        - apply decisions
+        - generate events
+        - advance time
         """
-        for _ in range(ticks):
-            self.tick()
+
+        if not session.is_active():
+            raise InvalidStateError("Cannot step inactive session")
+
+        try:
+            # 1. Evaluate rules → decisions
+            decisions = self._evaluate_rules(session)
+
+            # 2. Apply decisions
+            for decision in decisions:
+                decision.validate()
+                session.record_decision(decision)
+
+                # Decision execution is intentionally deferred
+                # (future: executor layer)
+
+            # 3. Generate events
+            events = self._generate_events(session)
+            for event in events:
+                session.record_event(event)
+
+            # 4. Advance time
+            session.advance_time(1)
+
+        except SimulationHalt:
+            # Hard stop, preserve evidence
+            session.end()
+            raise
+
+    # -------------------------
+    # Industry Hooks
+    # -------------------------
+
+    def initialize(self, session: Session) -> None:
+        """
+        Called once after session creation.
+        Generates initial work.
+        """
+        if hasattr(self.industry, "generate_initial_work"):
+            self.industry.generate_initial_work(session)
+
+    def _evaluate_rules(self, session: Session) -> List[Any]:
+        if hasattr(self.industry, "evaluate_rules"):
+            return self.industry.evaluate_rules(session)
+        return []
+
+    def _generate_events(self, session: Session) -> List[Any]:
+        if hasattr(self.industry, "generate_events"):
+            return self.industry.generate_events(session)
+        return []
