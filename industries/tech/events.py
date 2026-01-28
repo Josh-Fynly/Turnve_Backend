@@ -1,105 +1,55 @@
 """
 Tech Industry Events
 
-Events are triggered by the engine when notable milestones
-occur (e.g. work completion). They modify session state in
-a controlled, auditable way.
+Events represent external pressures or emergent conditions.
+They do NOT mutate session state directly.
+They are recorded by the engine as evidence.
 """
 
-from core_engine.event import Event
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TechEvent:
+    """
+    Immutable description of an external or emergent event.
+    """
+    event_type: str
+    description: str
+    severity: int  # 1 (low) → 5 (critical)
 
 
 # -------------------------
-# Event: Work Completed
+# External / Emergent Events
 # -------------------------
 
-def work_completed_event(work_id: str) -> Event:
-    """
-    Fired when a work item is completed.
-    Records the completion as an industry milestone.
-    """
-
-    def effect(session):
-        session.evidence.add_record(
-            category="work_completion",
-            reference=work_id,
-            note=f"Work item '{work_id}' completed."
-        )
-
-    return Event(
-        description=f"Work completed: {work_id}",
-        effect=effect
+def dependency_delay_event() -> TechEvent:
+    return TechEvent(
+        event_type="dependency_delay",
+        description="A third-party API dependency is delayed.",
+        severity=3,
     )
 
 
-# -------------------------
-# Event: Repository Connected
-# -------------------------
-
-def repository_connected_event() -> Event:
-    """
-    Fired when a code repository is connected.
-    Enables engineering workflows.
-    """
-
-    def effect(session):
-        session.flags["repo_connected"] = True
-
-        session.evidence.add_record(
-            category="engineering",
-            reference="repository",
-            note="Source code repository connected."
-        )
-
-    return Event(
-        description="Repository connected",
-        effect=effect
+def production_bug_event() -> TechEvent:
+    return TechEvent(
+        event_type="production_bug",
+        description="A critical bug was discovered in the system.",
+        severity=4,
     )
 
 
-# -------------------------
-# Event: Architecture Finalized
-# -------------------------
-
-def architecture_finalized_event() -> Event:
-    """
-    Fired when system architecture is finalized.
-    """
-
-    def effect(session):
-        session.flags["architecture_ready"] = True
-
-        session.evidence.add_record(
-            category="architecture",
-            reference="system_design",
-            note="System architecture finalized."
-        )
-
-    return Event(
-        description="Architecture finalized",
-        effect=effect
+def infrastructure_instability_event() -> TechEvent:
+    return TechEvent(
+        event_type="infrastructure_instability",
+        description="Infrastructure instability detected during deployment.",
+        severity=3,
     )
 
 
-# -------------------------
-# Event: Deployment Strategy Approved
-# -------------------------
-
-def deployment_strategy_approved_event() -> Event:
-    """
-    Fired when deployment strategy is approved.
-    """
-
-    def effect(session):
-        session.flags["deployment_ready"] = True
-
-        session.evidence.add_record(
-            category="delivery",
-            reference="deployment_strategy",
-            note="Deployment strategy approved."
-        )
-
-    return Event(
-        description="Deployment strategy approved",
-        effect=effect
+def stakeholder_pressure_event() -> TechEvent:
+    return TechEvent(
+        event_type="stakeholder_pressure",
+        description="Stakeholders are pressuring for earlier delivery.",
+        severity=2,
     )
