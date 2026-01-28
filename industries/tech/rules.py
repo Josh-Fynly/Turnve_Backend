@@ -1,90 +1,99 @@
 """
 Tech Industry Rules
 
-Rules evaluate session state and completed work to determine:
-- which events should fire
-- which categories of work are unlocked
+Rules observe the session state and propose decisions.
+They DO NOT mutate state or execute actions.
 """
 
 from typing import List
+import uuid
 
-from industries.tech.events import (
-    architecture_finalized_event,
-    deployment_strategy_approved_event,
-)
-from core_engine.event import Event
+from core_engine.decision import Decision, RiskLevel
+from core_engine.session import Session
 
 
 # -------------------------
-# Rule: Repository Required
+# Public API (Engine Hook)
 # -------------------------
 
-def repo_required_for_engineering(session) -> bool:
+def evaluate_rules(session: Session) -> List[Decision]:
     """
-    Engineering work requires a connected repository.
+    Evaluates current session state and proposes decisions.
     """
-    return session.flags.get("repo_connected", False)
+    decisions: List[Decision] = []
 
+    # Rule 1: Unstarted high-priority work
+    decisions.extend(_prioritization_rule(session))
 
-# -------------------------
-# Rule: Architecture Before Build
-# -------------------------
+    # Rule 2: Overloaded coordination (JPM-specific)
+    decisions.extend(_coordination_risk_rule(session))
 
-def architecture_required_before_build(session) -> bool:
-    """
-    Prevents implementation work before architecture is finalized.
-    """
-    return session.flags.get("architecture_ready", False)
+    return decisions
 
 
 # -------------------------
-# Rule: Deployment Requires Build Completion
+# Rule Implementations
 # -------------------------
 
-def deployment_requires_build(session) -> bool:
+def _prioritization_rule(session: Session) -> List[Decision]:
     """
-    Deployment is allowed only after implementation milestones exist.
+    If there are pending high-priority work items,
+    propose a prioritization decision.
     """
-    return session.evidence.has_category("work_completion")
+    decisions = []
+
+    pending_work = [
+        w for w in session.work_items()
+        if w.status == "pending" and w.priority == 0
+    ]
+
+    if pending_work:
+        decisions.append(
+            Decision(
+                decision_id=str(uuid.uuid4()),
+                title="Prioritize urgent work",
+                description=(
+                    "There are high-priority tasks pending. "
+                    "Decide whether to start immediately or re-sequence work."
+                ),
+                actor_role=session.role,
+                time=session.current_time(),
+                risk_level=RiskLevel.MEDIUM,
+                confidence=0.7,
+            )
+        )
+
+    return decisions
 
 
-# -------------------------
-# Rule: JPM Phase Approval
-# -------------------------
-
-def jpm_approval_required(session, phase: str) -> bool:
+def _coordination_risk_rule(session: Session) -> List[Decision]:
     """
-    Junior Project Manager must approve phase transitions.
+    JPM-focused rule:
+    If many tasks are in-progress simultaneously,
+    surface a coordination risk decision.
     """
-    approvals = session.flags.get("jpm_approvals", set())
-    return phase in approvals
+    decisions = []
 
+    in_progress = [
+        w for w in session.work_items()
+        if w.status == "in_progress"
+    ]
 
-# -------------------------
-# Rule: Evaluate Phase Transitions
-# -------------------------
+    if len(in_progress) >= 4:
+        decisions.append(
+            Decision(
+                decision_id=str(uuid.uuid4()),
+                title="Address coordination risk",
+                description=(
+                    "Multiple tasks are running in parallel. "
+                    "Decide whether to pause work, reassign focus, "
+                    "or accept coordination risk."
+                ),
+                actor_role=session.role,
+                time=session.current_time(),
+                risk_level=RiskLevel.HIGH,
+                confidence=0.6,
+            )
+        )
 
-def evaluate_phase_events(session) -> List[Event]:
-    """
-    Determines which phase-related events should be triggered
-    based on accumulated evidence and flags.
-    """
-
-    events: List[Event] = []
-
-    # Architecture finalized
-    if (
-        not session.flags.get("architecture_ready")
-        and session.evidence.has_category("architecture")
-    ):
-        events.append(architecture_finalized_event())
-
-    # Deployment strategy approved
-    if (
-        session.flags.get("architecture_ready")
-        and not session.flags.get("deployment_ready")
-        and session.evidence.has_category("delivery")
-    ):
-        events.append(deployment_strategy_approved_event())
-
-    return events
+    return decisions
