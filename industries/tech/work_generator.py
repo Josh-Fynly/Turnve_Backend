@@ -1,17 +1,18 @@
 """
 Tech Industry Work Generator
 
-Generates deterministic, phase-based work items
-for software engineering projects.
+Defines all possible work items for Tech simulations.
+Does NOT manage progression or state.
 """
 
 from typing import List
 
 from core_engine.work import WorkFactory, WorkItem
+from core_engine.session import Session
 
 
 # -------------------------
-# Discovery Phase
+# Work Catalog
 # -------------------------
 
 def discovery_work(created_at: int) -> List[WorkItem]:
@@ -35,10 +36,6 @@ def discovery_work(created_at: int) -> List[WorkItem]:
     ]
 
 
-# -------------------------
-# Architecture Phase
-# -------------------------
-
 def architecture_work(created_at: int) -> List[WorkItem]:
     return [
         WorkFactory.create(
@@ -60,14 +57,7 @@ def architecture_work(created_at: int) -> List[WorkItem]:
     ]
 
 
-# -------------------------
-# Implementation Phase
-# -------------------------
-
-def implementation_work(created_at: int, repo_connected: bool) -> List[WorkItem]:
-    if not repo_connected:
-        return []
-
+def implementation_work(created_at: int) -> List[WorkItem]:
     return [
         WorkFactory.create(
             title="Initialize repository",
@@ -87,10 +77,6 @@ def implementation_work(created_at: int, repo_connected: bool) -> List[WorkItem]
         ),
     ]
 
-
-# -------------------------
-# Delivery Phase
-# -------------------------
 
 def delivery_work(created_at: int) -> List[WorkItem]:
     return [
@@ -113,15 +99,11 @@ def delivery_work(created_at: int) -> List[WorkItem]:
     ]
 
 
-# -------------------------
-# Governance Phase (JPM)
-# -------------------------
-
 def governance_work(created_at: int) -> List[WorkItem]:
     return [
         WorkFactory.create(
-            title="JPM phase review",
-            description="Junior Project Manager reviews progress and approves next phase.",
+            title="JPM governance review",
+            description="Junior PM reviews progress, risks, and coordination.",
             estimated_effort=1,
             required_resources={"jpm": 1},
             priority=0,
@@ -131,43 +113,22 @@ def governance_work(created_at: int) -> List[WorkItem]:
 
 
 # -------------------------
-# Master Generator
+# Public Generator
 # -------------------------
 
-def generate_tech_work(session) -> List[WorkItem]:
+def generate_tech_work(session: Session) -> List[WorkItem]:
     """
-    Entry point used by the engine.
-    Generates work based on session state.
+    Returns all possible Tech work items.
+    Rules and engine decide WHAT becomes active.
     """
 
-    now = session.current_time
+    now = session.current_time()
     work: List[WorkItem] = []
 
-    # Always allow discovery
-    if not session.flags.get("discovery_done"):
-        work.extend(discovery_work(now))
-
-    # Architecture after discovery
-    if session.flags.get("discovery_done") and not session.flags.get("architecture_ready"):
-        work.extend(architecture_work(now))
-
-    # Implementation requires repo + architecture
-    if (
-        session.flags.get("architecture_ready")
-        and not session.flags.get("implementation_done")
-    ):
-        work.extend(
-            implementation_work(
-                now,
-                repo_connected=session.flags.get("repo_connected", False),
-            )
-        )
-
-    # Delivery after implementation
-    if session.flags.get("implementation_done") and not session.flags.get("delivery_done"):
-        work.extend(delivery_work(now))
-
-    # JPM governance always applies
+    work.extend(discovery_work(now))
+    work.extend(architecture_work(now))
+    work.extend(implementation_work(now))
+    work.extend(delivery_work(now))
     work.extend(governance_work(now))
 
     return work
