@@ -56,84 +56,77 @@ class SimulationEngine:
     # -------------------------
     # Simulation Step
     # -------------------------
-def step(self, session: Session) -> None:
-    """
-    Executes a single simulation step:
-    - evaluate rules
-    - record decisions (guarded)
-    - record events (guarded)
-    - advance time
-    """
 
-    if not session.is_active():
-        raise InvalidStateError("Cannot step inactive session")
+    def step(self, session: Session) -> None:
+        """
+        Executes a single simulation step:
+        - evaluate rules
+        - record decisions (guarded)
+        - record & execute events (guarded)
+        - advance time
+        """
 
-    try:
-        # -------------------------
-        # 1. Evaluate rules → decisions
-        # -------------------------
-        proposed_decisions = self._evaluate_rules(session)
+        if not session.is_active():
+            raise InvalidStateError("Cannot step inactive session")
 
-        recorded_titles = {
-            d.get("title")
-            for d in session.decisions
-            if d.get("time") == session.current_time
-        }
+        try:
+            # -------------------------
+            # 1. Evaluate rules → decisions
+            # -------------------------
+            proposed_decisions = self._evaluate_rules(session)
 
-        decisions_recorded = 0
-        MAX_DECISIONS_PER_STEP = 3
+            recorded_titles = {
+                d.title
+                for d in session.decisions
+                if d.time == session.current_time
+            }
 
-        for decision in proposed_decisions:
-            if decisions_recorded >= MAX_DECISIONS_PER_STEP:
-                break
+            decisions_recorded = 0
+            MAX_DECISIONS_PER_STEP = 3
 
-            # Deduplicate by title per time step
-            if decision.title in recorded_titles:
-                continue
+            for decision in proposed_decisions:
+                if decisions_recorded >= MAX_DECISIONS_PER_STEP:
+                    break
 
-            session.record_decision({
-                "decision_id": decision.decision_id,
-                "title": decision.title,
-                "description": decision.description,
-            })
+                # Deduplicate by title per timestep
+                if decision.title in recorded_titles:
+                    continue
 
-            recorded_titles.add(decision.title)
-            decisions_recorded += 1
+                decision.validate()
+                session.record_decision(decision)
 
-        # -------------------------
-        # 2. Generate events (guarded)
-        # -------------------------
-        proposed_events = self._generate_events(session)
+                recorded_titles.add(decision.title)
+                decisions_recorded += 1
 
-        recorded_events = {
-            (e.get("event_type"), e.get("description"))
-            for e in session.events
-            if e.get("time") == session.current_time
-        }
+            # -------------------------
+            # 2. Generate & execute events
+            # -------------------------
+            proposed_events = self._generate_events(session)
 
-        for event in proposed_events:
-            key = (event.event_type, event.description)
+            recorded_event_descriptions = {
+                e.description
+                for e in session.events
+                if e.time == session.current_time
+            }
 
-            # Prevent duplicate events per step
-            if key in recorded_events:
-                continue
+            for event in proposed_events:
+                # Prevent duplicate events per step
+                if event.description in recorded_event_descriptions:
+                    continue
 
-            session.trigger_event({
-                "event_type": event.event_type,
-                "description": event.description,
-                "severity": event.severity,
-            })
+                session.record_event(event)
+                event.effect(session)
 
-            recorded_events.add(key)
+                recorded_event_descriptions.add(event.description)
 
-        # -------------------------
-        # 3. Advance time
-        # -------------------------
-        session.advance_time(1)
+            # -------------------------
+            # 3. Advance time
+            # -------------------------
+            session.advance_time(1)
 
-    except SimulationHalt:
-        session.end()
-        raise
+        except SimulationHalt:
+            session.end()
+            raise
 
     # -------------------------
     # Industry Hooks
