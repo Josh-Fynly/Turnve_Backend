@@ -1,32 +1,30 @@
 """
 Tech Industry Rules
 
-Rules observe the session state and propose decisions.
-They DO NOT mutate state or execute actions.
+Rules observe the current session state and propose decisions.
+They do NOT mutate state, generate work, or trigger events.
 """
 
 from typing import List
 import uuid
 
-from core_engine.decision import Decision, RiskLevel
+from core_engine.decision import Decision
 from core_engine.session import Session
 
 
 # -------------------------
-# Public API (Engine Hook)
+# Public Engine Hook
 # -------------------------
 
 def evaluate_rules(session: Session) -> List[Decision]:
     """
-    Evaluates current session state and proposes decisions.
+    Entry point called by the SimulationEngine.
     """
     decisions: List[Decision] = []
 
-    # Rule 1: Unstarted high-priority work
-    decisions.extend(_prioritization_rule(session))
-
-    # Rule 2: Overloaded coordination (JPM-specific)
-    decisions.extend(_coordination_risk_rule(session))
+    decisions.extend(_prioritization_pressure_rule(session))
+    decisions.extend(_coordination_overload_rule(session))
+    decisions.extend(_stalled_work_rule(session))
 
     return decisions
 
@@ -35,64 +33,95 @@ def evaluate_rules(session: Session) -> List[Decision]:
 # Rule Implementations
 # -------------------------
 
-def _prioritization_rule(session: Session) -> List[Decision]:
+def _prioritization_pressure_rule(session: Session) -> List[Decision]:
     """
-    If there are pending high-priority work items,
-    propose a prioritization decision.
+    If multiple high-effort work items are pending,
+    surface a prioritization decision.
     """
     decisions = []
 
-    pending_work = [
-        w for w in session.work_items()
-        if w.status == "pending" and w.priority == 0
+    pending = [
+        w for w in session.work_items.values()
+        if w.get("status") == "pending"
     ]
 
-    if pending_work:
+    high_effort = [
+        w for w in pending
+        if w.get("estimated_effort", 0) >= 5
+    ]
+
+    if len(high_effort) >= 2:
         decisions.append(
             Decision(
                 decision_id=str(uuid.uuid4()),
-                title="Prioritize urgent work",
+                title="Prioritize major work items",
                 description=(
-                    "There are high-priority tasks pending. "
-                    "Decide whether to start immediately or re-sequence work."
+                    "Multiple high-effort work items are pending. "
+                    "Decide which to focus on first and which to defer."
                 ),
                 actor_role=session.role,
-                time=session.current_time(),
-                risk_level=RiskLevel.MEDIUM,
-                confidence=0.7,
+                time=session.current_time,
             )
         )
 
     return decisions
 
 
-def _coordination_risk_rule(session: Session) -> List[Decision]:
+def _coordination_overload_rule(session: Session) -> List[Decision]:
     """
-    JPM-focused rule:
-    If many tasks are in-progress simultaneously,
-    surface a coordination risk decision.
+    JPM-focused rule.
+    If too many tasks are in progress at once,
+    coordination risk increases.
     """
     decisions = []
 
     in_progress = [
-        w for w in session.work_items()
-        if w.status == "in_progress"
+        w for w in session.work_items.values()
+        if w.get("status") == "in_progress"
     ]
 
     if len(in_progress) >= 4:
         decisions.append(
             Decision(
                 decision_id=str(uuid.uuid4()),
-                title="Address coordination risk",
+                title="Address coordination overload",
                 description=(
-                    "Multiple tasks are running in parallel. "
+                    "Several tasks are running in parallel. "
                     "Decide whether to pause work, reassign focus, "
                     "or accept coordination risk."
                 ),
                 actor_role=session.role,
-                time=session.current_time(),
-                risk_level=RiskLevel.HIGH,
-                confidence=0.6,
+                time=session.current_time,
+            )
+        )
+
+    return decisions
+
+
+def _stalled_work_rule(session: Session) -> List[Decision]:
+    """
+    If work has been pending for too long without progress,
+    surface a decision to unblock or re-scope.
+    """
+    decisions = []
+
+    stalled = [
+        w for w in session.work_items.values()
+        if w.get("status") == "pending"
+        and (session.current_time - w.get("created_at", 0)) >= 3
+    ]
+
+    if stalled:
+        decisions.append(
+            Decision(
+                decision_id=str(uuid.uuid4()),
+                title="Unblock stalled work",
+                description=(
+                    "Some work items have been pending without progress. "
+                    "Decide whether to unblock, deprioritize, or remove them."
+                ),
+                actor_role=session.role,
+                time=session.current_time,
             )
         )
 
