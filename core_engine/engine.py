@@ -148,4 +148,4 @@ class SimulationEngine:
     def _generate_events(self, session: Session) -> List[Any]:
         if hasattr(self.industry, "generate_events"):
             return self.industry.generate_events(session)
-        return []
+         return []
