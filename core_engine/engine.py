@@ -56,45 +56,84 @@ class SimulationEngine:
     # -------------------------
     # Simulation Step
     # -------------------------
+def step(self, session: Session) -> None:
+    """
+    Executes a single simulation step:
+    - evaluate rules
+    - record decisions (guarded)
+    - record events (guarded)
+    - advance time
+    """
 
-    def step(self, session: Session) -> None:
-        """
-        Executes a single simulation tick.
-        Order is deterministic and enforced.
-        """
+    if not session.is_active():
+        raise InvalidStateError("Cannot step inactive session")
 
-        if not session.is_active():
-            raise InvalidStateError("Cannot step inactive session")
+    try:
+        # -------------------------
+        # 1. Evaluate rules → decisions
+        # -------------------------
+        proposed_decisions = self._evaluate_rules(session)
 
-        if not session.can_step():
-            raise InvalidStateError("Session is not in a steppable state")
+        recorded_titles = {
+            d.get("title")
+            for d in session.decisions
+            if d.get("time") == session.current_time
+        }
 
-        try:
-            current_tick = session.current_time()
+        decisions_recorded = 0
+        MAX_DECISIONS_PER_STEP = 3
 
-            # 1. Evaluate rules → decisions
-            decisions = self._evaluate_rules(session)
-            decisions = sorted(decisions, key=lambda d: d.priority)
+        for decision in proposed_decisions:
+            if decisions_recorded >= MAX_DECISIONS_PER_STEP:
+                break
 
-            # 2. Record decisions (execution deferred)
-            for decision in decisions:
-                decision.validate()
-                decision.bind_time(current_tick)
-                session.record_decision(decision)
+            # Deduplicate by title per time step
+            if decision.title in recorded_titles:
+                continue
 
-            # 3. Generate events
-            events = self._generate_events(session)
-            events = sorted(events, key=lambda e: e.severity)
+            session.record_decision({
+                "decision_id": decision.decision_id,
+                "title": decision.title,
+                "description": decision.description,
+            })
 
-            for event in events:
-                session.record_event(event)
+            recorded_titles.add(decision.title)
+            decisions_recorded += 1
 
-            # 4. Advance time
-            session.advance_time(1)
+        # -------------------------
+        # 2. Generate events (guarded)
+        # -------------------------
+        proposed_events = self._generate_events(session)
 
-        except SimulationHalt:
-            session.end()
-            raise
+        recorded_events = {
+            (e.get("event_type"), e.get("description"))
+            for e in session.events
+            if e.get("time") == session.current_time
+        }
+
+        for event in proposed_events:
+            key = (event.event_type, event.description)
+
+            # Prevent duplicate events per step
+            if key in recorded_events:
+                continue
+
+            session.trigger_event({
+                "event_type": event.event_type,
+                "description": event.description,
+                "severity": event.severity,
+            })
+
+            recorded_events.add(key)
+
+        # -------------------------
+        # 3. Advance time
+        # -------------------------
+        session.advance_time(1)
+
+    except SimulationHalt:
+        session.end()
+        raise
 
     # -------------------------
     # Industry Hooks
