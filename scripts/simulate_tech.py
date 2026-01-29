@@ -1,94 +1,74 @@
 """
-Turnve Tech Simulation – Dry Run Harness
+Turnve Tech Simulation Dry-Run Harness
 
-Purpose:
-- Validate engine ↔ session ↔ industry integration
-- Observe deterministic simulation progression
-- Catch silent stalls, duplication, or runaway generation
+This script runs a deterministic simulation loop
+and prints state transitions for manual validation.
 
-This file MUST NOT mutate core logic.
-It is read-only orchestration + logging.
+NO engine mutation.
+NO test framework.
+NO deployment dependency.
 """
 
 from core_engine.engine import SimulationEngine
 from core_engine.exceptions import SimulationHalt
 
 
-def print_step_header(step: int, time: int):
-    print("\n" + "=" * 60)
-    print(f"STEP {step} | SIMULATION TIME: {time}")
-    print("=" * 60)
+def print_divider():
+    print("\n" + "-" * 80 + "\n")
 
 
-def print_work(session):
-    print("\nWork Items:")
-    if not session.work_items:
-        print("  (none)")
-        return
+def summarize_session(session):
+    print(f"⏱  Time: {session.current_time}")
+    print(f"📦 Work items ({len(session.work_items)}):")
 
     for wid, work in session.work_items.items():
-        status = work.get("status", "unknown")
-        print(f"  - {work.get('title', wid)} [{status}]")
+        title = work.get("title", "UNKNOWN")
+        completed = work.get("completed", False)
+        status = "✅" if completed else "⏳"
+        print(f"   {status} {title}")
+
+    print(f"\n🧠 Decisions taken ({len(session.decisions)}):")
+    for d in session.decisions[-3:]:
+        print(f"   • {d.get('title')} @ t={d.get('time')}")
+
+    print(f"\n⚡ Events fired ({len(session.events)}):")
+    for e in session.events[-3:]:
+        print(f"   • {e.get('description')} @ t={e.get('time')}")
+
+    print(f"\n🧾 Evidence count: {len(session.evidence)}")
 
 
-def print_decisions(session, last_time):
-    decisions = [
-        d for d in session.decisions if d.get("time") == last_time
-    ]
-
-    print("\nDecisions:")
-    if not decisions:
-        print("  (none)")
-        return
-
-    for d in decisions:
-        print(f"  - {d.get('title')}")
-
-
-def print_events(session, last_time):
-    events = [
-        e for e in session.events if e.get("time") == last_time
-    ]
-
-    print("\nEvents:")
-    if not events:
-        print("  (none)")
-        return
-
-    for e in events:
-        print(f"  - {e.get('event_type')}: {e.get('description')}")
-
-
-def run_simulation(max_steps: int = 15):
-    print("\n🚀 Starting Turnve Tech Simulation Dry Run")
-
+def main():
     engine = SimulationEngine("tech")
     session = engine.create_session(role="developer")
 
+    MAX_STEPS = 12
+
+    print_divider()
+    print("🚀 Starting Tech Simulation Dry-Run")
+    print_divider()
+
     try:
-        for step in range(1, max_steps + 1):
-            print_step_header(step, session.current_time)
+        for step in range(MAX_STEPS):
+            print(f"▶️  STEP {step + 1}")
 
             engine.step(session)
+            summarize_session(session)
 
-            print_work(session)
-            print_decisions(session, session.current_time - 1)
-            print_events(session, session.current_time - 1)
+            print_divider()
 
-            if not session.is_active():
-                print("\n🛑 Session ended by engine.")
+            # Optional early exit if no new work appears
+            if not session.work_items:
+                print("⚠️  No work remaining. Ending simulation.")
                 break
 
-    except SimulationHalt as e:
-        print("\n❗ Simulation halted:", str(e))
+    except SimulationHalt as halt:
+        print(f"🛑 Simulation halted: {halt}")
 
-    print("\n✅ Dry run completed.")
-    print(f"Final simulation time: {session.current_time}")
-    print(f"Total work items: {len(session.work_items)}")
-    print(f"Total decisions: {len(session.decisions)}")
-    print(f"Total events: {len(session.events)}")
-    print(f"Total evidence records: {len(session.evidence)}")
+    finally:
+        engine.end_session(session)
+        print("✅ Simulation ended cleanly.")
 
 
 if __name__ == "__main__":
-    run_simulation()
+    main()
