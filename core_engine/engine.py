@@ -21,6 +21,9 @@ class SimulationEngine:
     """
 
     def __init__(self, industry_name: str):
+        """
+        industry_name: e.g. 'tech'
+        """
         self.industry_name = industry_name
         self.industry = self._load_industry(industry_name)
 
@@ -61,8 +64,8 @@ class SimulationEngine:
         """
         Executes a single simulation step:
         - evaluate rules
-        - record decisions (guarded)
-        - record & execute events (guarded)
+        - record decisions
+        - record events
         - advance time
         """
 
@@ -73,51 +76,27 @@ class SimulationEngine:
             # -------------------------
             # 1. Evaluate rules → decisions
             # -------------------------
-            proposed_decisions = self._evaluate_rules(session)
+            decisions = self._evaluate_rules(session)
 
-            recorded_titles = {
-                d.title
-                for d in session.decisions
-                if d.time == session.current_time
-            }
-
-            decisions_recorded = 0
-            MAX_DECISIONS_PER_STEP = 3
-
-            for decision in proposed_decisions:
-                if decisions_recorded >= MAX_DECISIONS_PER_STEP:
-                    break
-
-                # Deduplicate by title per timestep
-                if decision.title in recorded_titles:
-                    continue
-
-                decision.validate()
-                session.record_decision(decision)
-
-                recorded_titles.add(decision.title)
-                decisions_recorded += 1
+            for decision in decisions:
+                # MVP: record only, no execution layer yet
+                session.record_decision({
+                    "decision_id": getattr(decision, "decision_id", None),
+                    "title": getattr(decision, "title", None),
+                    "description": getattr(decision, "description", None),
+                })
 
             # -------------------------
-            # 2. Generate & execute events
+            # 2. Generate events
             # -------------------------
-            proposed_events = self._generate_events(session)
+            events = self._generate_events(session)
 
-            recorded_event_descriptions = {
-                e.description
-                for e in session.events
-                if e.time == session.current_time
-            }
-
-            for event in proposed_events:
-                # Prevent duplicate events per step
-                if event.description in recorded_event_descriptions:
-                    continue
-
-                session.record_event(event)
-                event.effect(session)
-
-                recorded_event_descriptions.add(event.description)
+            for event in events:
+                session.trigger_event({
+                    "event_type": getattr(event, "event_type", None),
+                    "description": getattr(event, "description", None),
+                    "severity": getattr(event, "severity", None),
+                })
 
             # -------------------------
             # 3. Advance time
@@ -135,7 +114,7 @@ class SimulationEngine:
     def initialize(self, session: Session) -> None:
         """
         Called exactly once after session start.
-        Generates initial work canvas.
+        Generates initial work.
         """
         if hasattr(self.industry, "generate_initial_work"):
             self.industry.generate_initial_work(session)
@@ -148,4 +127,4 @@ class SimulationEngine:
     def _generate_events(self, session: Session) -> List[Any]:
         if hasattr(self.industry, "generate_events"):
             return self.industry.generate_events(session)
-         return []
+        return []
