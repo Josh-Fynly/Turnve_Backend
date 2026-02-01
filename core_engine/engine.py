@@ -22,14 +22,14 @@ class SimulationEngine:
 
     def __init__(self, industry_name: str):
         """
-        industry_name: e.g. 'tech'
+        industry_name: e.g. "tech"
         """
         self.industry_name = industry_name
         self.industry = self._load_industry(industry_name)
 
-    # -------------------------
+    # --------------------------------------------------
     # Industry Loading
-    # -------------------------
+    # --------------------------------------------------
 
     def _load_industry(self, industry_name: str):
         try:
@@ -39,11 +39,14 @@ class SimulationEngine:
                 f"Industry '{industry_name}' could not be loaded"
             ) from e
 
-    # -------------------------
+    # --------------------------------------------------
     # Session Lifecycle
-    # -------------------------
+    # --------------------------------------------------
 
     def create_session(self, role: str) -> Session:
+        """
+        Creates and starts a new simulation session.
+        """
         session = Session(
             industry=self.industry_name,
             role=role,
@@ -56,14 +59,14 @@ class SimulationEngine:
         if session.is_active():
             session.end()
 
-    # -------------------------
+    # --------------------------------------------------
     # Simulation Step
-    # -------------------------
+    # --------------------------------------------------
 
     def step(self, session: Session) -> None:
         """
         Executes a single simulation step:
-        - evaluate rules
+        - evaluate industry rules
         - record decisions
         - record events
         - advance time
@@ -76,10 +79,9 @@ class SimulationEngine:
             # -------------------------
             # 1. Evaluate rules → decisions
             # -------------------------
-            decisions = self._evaluate_rules(session)
+            proposed_decisions = self._evaluate_rules(session)
 
-            for decision in decisions:
-                # MVP: record only, no execution layer yet
+            for decision in proposed_decisions:
                 session.record_decision({
                     "decision_id": getattr(decision, "decision_id", None),
                     "title": getattr(decision, "title", None),
@@ -89,13 +91,13 @@ class SimulationEngine:
             # -------------------------
             # 2. Generate events
             # -------------------------
-            events = self._generate_events(session)
+            proposed_events = self._generate_events(session)
 
-            for event in events:
+            for event in proposed_events:
                 session.trigger_event({
-                    "event_type": getattr(event, "event_type", None),
-                    "description": getattr(event, "description", None),
-                    "severity": getattr(event, "severity", None),
+                    "event_type": getattr(event, "event_type", "generic"),
+                    "description": getattr(event, "description", ""),
+                    "severity": getattr(event, "severity", "info"),
                 })
 
             # -------------------------
@@ -107,14 +109,14 @@ class SimulationEngine:
             session.end()
             raise
 
-    # -------------------------
+    # --------------------------------------------------
     # Industry Hooks
-    # -------------------------
+    # --------------------------------------------------
 
     def initialize(self, session: Session) -> None:
         """
         Called exactly once after session start.
-        Generates initial work.
+        Generates initial work for the industry.
         """
         if hasattr(self.industry, "generate_initial_work"):
             self.industry.generate_initial_work(session)
