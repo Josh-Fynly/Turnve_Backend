@@ -6,7 +6,7 @@ Only the SimulationEngine is allowed to mutate it.
 """
 
 from enum import Enum
-from typing import List
+from typing import List, Any
 
 from core_engine.exceptions import InvalidStateError
 
@@ -26,8 +26,11 @@ class Session:
         self._state = SessionState.CREATED
         self._time = 0
 
-        self._decisions: List = []
-        self._events: List = []
+        self._decisions: List[Any] = []
+        self._events: List[Any] = []
+
+        # Cohort classification
+        self._cohort_profile = None
 
     # -------------------------
     # State Management
@@ -65,6 +68,7 @@ class Session:
             raise InvalidStateError("Time delta must be positive")
         self._time += delta
 
+    @property
     def current_time(self) -> int:
         return self._time
 
@@ -81,6 +85,21 @@ class Session:
         if not self.is_active():
             raise InvalidStateError("Cannot record event on inactive session")
         self._events.append(event)
+
+    # -------------------------
+    # Cohort Assignment
+    # -------------------------
+
+    def assign_cohort(self, profile) -> None:
+        if self._state != SessionState.CREATED:
+            raise InvalidStateError(
+                "Cohort must be assigned before session starts stepping"
+            )
+        self._cohort_profile = profile
+
+    @property
+    def cohort_profile(self):
+        return self._cohort_profile
 
     # -------------------------
     # Read-Only Accessors
