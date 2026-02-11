@@ -1,155 +1,133 @@
 """
-Phase 1 — Data Familiarization & SQL Foundations
+Phase 1 — Foundations of B2B SaaS CRM Analytics
 
-This module simulates onboarding analysis inside a B2B SaaS CRM company.
+Goal:
+Introduce learners to real-world SaaS datasets and
+basic analytical thinking.
 
-Responsibilities:
-- Define tasks
-- Validate learner outputs
-- Emit simulation events
-- Produce portfolio artifacts
+This phase builds:
+- data exploration skills
+- cleaning workflows
+- business metric literacy
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import List
 
 
 # -------------------------
-# Task Definitions
+# Task Model
 # -------------------------
 
-@dataclass(frozen=True)
+@dataclass
 class PhaseTask:
     id: str
     title: str
     description: str
-    required_outputs: List[str]
 
 
-PHASE1_TASKS: List[PhaseTask] = [
-    PhaseTask(
-        id="schema_exploration",
-        title="Dataset Exploration",
-        description=(
-            "Inspect CRM schema, identify relationships, and explain table structure."
+# -------------------------
+# Phase 1 Tasks
+# -------------------------
+
+def get_tasks() -> List[PhaseTask]:
+    """
+    Returns Phase 1 learning tasks.
+    """
+
+    return [
+        PhaseTask(
+            id="p1_load_dataset",
+            title="Load CRM dataset",
+            description=(
+                "Import the provided B2B CRM dataset and inspect its structure. "
+                "Identify key columns such as customer_id, signup_date, plan_type, "
+                "revenue, and churn_status."
+            ),
         ),
-        required_outputs=[
-            "schema_explanation",
-            "er_diagram",
-        ],
-    ),
-    PhaseTask(
-        id="customer_segmentation",
-        title="Customer Segmentation Analysis",
-        description=(
-            "Analyze customer distribution by industry, geography, and signup trends."
+        PhaseTask(
+            id="p1_clean_data",
+            title="Clean missing and inconsistent data",
+            description=(
+                "Detect missing values, duplicates, and formatting issues. "
+                "Apply cleaning techniques and document assumptions."
+            ),
         ),
-        required_outputs=[
-            "segmentation_sql",
-            "segmentation_summary",
-            "segmentation_charts",
-        ],
-    ),
-    PhaseTask(
-        id="user_activity_metrics",
-        title="User Activity Metrics",
-        description=(
-            "Compute DAU and activity usage patterns across companies."
+        PhaseTask(
+            id="p1_explore_metrics",
+            title="Explore core SaaS metrics",
+            description=(
+                "Compute descriptive statistics and summarize key SaaS metrics "
+                "such as active customers, churn rate, and revenue distribution."
+            ),
         ),
-        required_outputs=[
-            "activity_sql",
-            "activity_report",
+        PhaseTask(
+            id="p1_generate_insights",
+            title="Generate initial business insights",
+            description=(
+                "Write a short analysis explaining patterns in customer behavior "
+                "and possible business implications."
+            ),
+        ),
+    ]
+
+
+# -------------------------
+# Completion Logic
+# -------------------------
+
+def is_complete(session) -> bool:
+    """
+    Phase is complete when all tasks are marked finished.
+    """
+
+    completed = session.flags.get("phase1_completed_tasks", set())
+
+    return len(completed) >= len(get_tasks())
+
+
+# -------------------------
+# Task Evaluation
+# -------------------------
+
+def evaluate_task(session, task_id: str, submission: dict) -> bool:
+    """
+    Evaluates learner submission.
+
+    For MVP:
+    Accept structured submission and mark complete.
+    """
+
+    completed = session.flags.setdefault(
+        "phase1_completed_tasks",
+        set(),
+    )
+
+    completed.add(task_id)
+
+    return True
+
+
+# -------------------------
+# Portfolio Artifact
+# -------------------------
+
+def build_portfolio_artifact(session) -> dict:
+    """
+    Generates Phase 1 portfolio artifact.
+
+    This will later be converted into PDF.
+    """
+
+    return {
+        "title": "CRM Dataset Exploration Report",
+        "summary": (
+            "Analyzed B2B SaaS CRM dataset to identify "
+            "customer behavior patterns and revenue trends."
+        ),
+        "skills_demonstrated": [
+            "Data cleaning",
+            "Exploratory data analysis",
+            "Business metric interpretation",
         ],
-    ),
-]
-
-
-# -------------------------
-# Evaluation Model
-# -------------------------
-
-class Phase1Evaluation:
-    """
-    Lightweight scoring model.
-
-    Real version can later integrate:
-    - SQL correctness checks
-    - rubric scoring
-    - ML-assisted grading
-    """
-
-    def score_submission(self, submission: Dict[str, Any]) -> Dict[str, Any]:
-        score = 0
-        feedback = []
-
-        for task in PHASE1_TASKS:
-            missing = [
-                item for item in task.required_outputs
-                if item not in submission
-            ]
-
-            if missing:
-                feedback.append(
-                    f"Task '{task.id}' missing outputs: {missing}"
-                )
-            else:
-                score += 1
-
-        completion_ratio = score / len(PHASE1_TASKS)
-
-        return {
-            "score": completion_ratio,
-            "passed": completion_ratio >= 0.7,
-            "feedback": feedback,
-        }
-
-
-# -------------------------
-# Portfolio Artifact Builder
-# -------------------------
-
-class Phase1PortfolioBuilder:
-    """
-    Converts learner outputs into a structured artifact
-    for the portfolio hub.
-    """
-
-    def build_artifact(self, submission: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "title": "Customer & Usage Overview Report",
-            "phase": "phase1_foundations",
-            "sections": {
-                "schema_analysis": submission.get("schema_explanation"),
-                "segmentation": submission.get("segmentation_summary"),
-                "activity_metrics": submission.get("activity_report"),
-            },
-        }
-
-
-# -------------------------
-# Phase Controller
-# -------------------------
-
-class Phase1Foundations:
-    """
-    Entry point used by the SimulationEngine.
-    """
-
-    def __init__(self):
-        self.tasks = PHASE1_TASKS
-        self.evaluator = Phase1Evaluation()
-        self.portfolio_builder = Phase1PortfolioBuilder()
-
-    # ---- Simulation Interface ----
-
-    def get_tasks(self) -> List[PhaseTask]:
-        return self.tasks
-
-    def evaluate(self, submission: Dict[str, Any]) -> Dict[str, Any]:
-        return self.evaluator.score_submission(submission)
-
-    def build_portfolio_artifact(
-        self,
-        submission: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        return self.portfolio_builder.build_artifact(submission)
+    }
