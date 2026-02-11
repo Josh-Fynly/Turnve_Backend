@@ -95,4 +95,4 @@ def evaluate_rules(session) -> List[Any]:
             return decisions
 
     # ---- Fallback ----
-    return _generic_decisions(session)
+   return _generic_decisions(session)
