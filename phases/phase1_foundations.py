@@ -1,18 +1,12 @@
 """
 Phase 1 — Foundations of B2B SaaS CRM Analytics
 
-Goal:
-Introduce learners to real-world SaaS datasets and
-basic analytical thinking.
-
-This phase builds:
-- data exploration skills
-- cleaning workflows
-- business metric literacy
+Dataset-powered analytics tasks.
 """
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
+from collections import defaultdict
 
 
 # -------------------------
@@ -27,75 +21,104 @@ class PhaseTask:
 
 
 # -------------------------
-# Phase 1 Tasks
+# Helpers
+# -------------------------
+
+def _get_dataset(session) -> Dict:
+    dataset = session.flags.get("dataset")
+
+    if not dataset:
+        raise RuntimeError("CRM dataset not loaded in session")
+
+    return dataset
+
+
+# -------------------------
+# Analytics Functions
+# -------------------------
+
+def compute_customer_summary(session) -> Dict:
+    dataset = _get_dataset(session)
+
+    companies = dataset["companies"]
+    subscriptions = dataset["subscriptions"]
+
+    total_companies = len(companies)
+
+    active = sum(1 for s in subscriptions if s["active"])
+    churned = total_companies - active
+
+    churn_rate = churned / total_companies if total_companies else 0
+
+    return {
+        "total_companies": total_companies,
+        "active_companies": active,
+        "churned_companies": churned,
+        "churn_rate": round(churn_rate, 3),
+    }
+
+
+def compute_revenue_by_plan(session) -> Dict:
+    dataset = _get_dataset(session)
+
+    revenue = defaultdict(float)
+
+    for sub in dataset["subscriptions"]:
+        if sub["active"]:
+            revenue[sub["plan"]] += sub["monthly_price"]
+
+    return dict(revenue)
+
+
+def compute_usage_trends(session) -> Dict:
+    dataset = _get_dataset(session)
+
+    monthly_usage = defaultdict(int)
+
+    for act in dataset["activity"]:
+        monthly_usage[act["month"]] += act["feature_usage"]
+
+    return dict(sorted(monthly_usage.items()))
+
+
+# -------------------------
+# Tasks
 # -------------------------
 
 def get_tasks() -> List[PhaseTask]:
-    """
-    Returns Phase 1 learning tasks.
-    """
-
     return [
         PhaseTask(
-            id="p1_load_dataset",
-            title="Load CRM dataset",
+            id="p1_customer_summary",
+            title="Analyze customer base",
             description=(
-                "Import the provided B2B CRM dataset and inspect its structure. "
-                "Identify key columns such as customer_id, signup_date, plan_type, "
-                "revenue, and churn_status."
+                "Compute total companies, active subscriptions, "
+                "and churn rate from the CRM dataset."
             ),
         ),
         PhaseTask(
-            id="p1_clean_data",
-            title="Clean missing and inconsistent data",
+            id="p1_revenue_analysis",
+            title="Analyze revenue by plan",
             description=(
-                "Detect missing values, duplicates, and formatting issues. "
-                "Apply cleaning techniques and document assumptions."
+                "Calculate total monthly revenue grouped by subscription plan."
             ),
         ),
         PhaseTask(
-            id="p1_explore_metrics",
-            title="Explore core SaaS metrics",
+            id="p1_usage_trends",
+            title="Analyze product usage trends",
             description=(
-                "Compute descriptive statistics and summarize key SaaS metrics "
-                "such as active customers, churn rate, and revenue distribution."
-            ),
-        ),
-        PhaseTask(
-            id="p1_generate_insights",
-            title="Generate initial business insights",
-            description=(
-                "Write a short analysis explaining patterns in customer behavior "
-                "and possible business implications."
+                "Aggregate feature usage per month to identify trends."
             ),
         ),
     ]
 
 
 # -------------------------
-# Completion Logic
+# Evaluation
 # -------------------------
 
-def is_complete(session) -> bool:
+def evaluate_task(session, task_id: str) -> Dict:
     """
-    Phase is complete when all tasks are marked finished.
-    """
-
-    completed = session.flags.get("phase1_completed_tasks", set())
-
-    return len(completed) >= len(get_tasks())
-
-
-# -------------------------
-# Task Evaluation
-# -------------------------
-
-def evaluate_task(session, task_id: str, submission: dict) -> bool:
-    """
-    Evaluates learner submission.
-
-    For MVP:
-    Accept structured submission and mark complete.
+    Executes analytics task and records completion.
     """
 
     completed = session.flags.setdefault(
@@ -103,31 +126,50 @@ def evaluate_task(session, task_id: str, submission: dict) -> bool:
         set(),
     )
 
+    if task_id == "p1_customer_summary":
+        result = compute_customer_summary(session)
+
+    elif task_id == "p1_revenue_analysis":
+        result = compute_revenue_by_plan(session)
+
+    elif task_id == "p1_usage_trends":
+        result = compute_usage_trends(session)
+
+    else:
+        raise ValueError(f"Unknown Phase 1 task: {task_id}")
+
     completed.add(task_id)
 
-    return True
+    return result
+
+
+# -------------------------
+# Completion Check
+# -------------------------
+
+def is_complete(session) -> bool:
+    completed = session.flags.get("phase1_completed_tasks", set())
+
+    return len(completed) >= len(get_tasks())
 
 
 # -------------------------
 # Portfolio Artifact
 # -------------------------
 
-def build_portfolio_artifact(session) -> dict:
+def build_portfolio_artifact(session) -> Dict:
     """
-    Generates Phase 1 portfolio artifact.
-
-    This will later be converted into PDF.
+    Generates a structured analytics report.
     """
 
     return {
-        "title": "CRM Dataset Exploration Report",
-        "summary": (
-            "Analyzed B2B SaaS CRM dataset to identify "
-            "customer behavior patterns and revenue trends."
-        ),
+        "title": "B2B SaaS CRM Analytics Report",
+        "customer_summary": compute_customer_summary(session),
+        "revenue_analysis": compute_revenue_by_plan(session),
+        "usage_trends": compute_usage_trends(session),
         "skills_demonstrated": [
-            "Data cleaning",
-            "Exploratory data analysis",
-            "Business metric interpretation",
+            "Data aggregation",
+            "KPI analysis",
+            "Business insight generation",
         ],
     }
