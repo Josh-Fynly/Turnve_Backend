@@ -22,17 +22,20 @@ class DataAnalystScenario:
     # Initialization
     # -------------------------
 
-    def initialize_session(self, session):
-        """
-        Prepare session flags and state.
+def initialize_session(self, session):
+    """
+    Prepare session flags and state.
+    """
 
-        """
-        from industries.tech.data_analyst.datasets.crm_dataset import load_crm_dataset
+    # Import INSIDE the function to avoid circular imports
+    from industries.tech.data_analyst.datasets.crm_dataset import load_crm_dataset
 
-session.flags["dataset"] = load_crm_dataset()
+    session.flags.setdefault("scenario_phase", 0)
+    session.flags.setdefault("scenario_complete", False)
 
-        session.flags.setdefault("scenario_phase", 0)
-        session.flags.setdefault("scenario_complete", False)
+    # Load dataset only once per session
+    if "dataset" not in session.flags:
+        session.flags["dataset"] = load_crm_dataset()
 
     # -------------------------
     # Active Phase
