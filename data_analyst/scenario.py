@@ -25,7 +25,11 @@ class DataAnalystScenario:
     def initialize_session(self, session):
         """
         Prepare session flags and state.
+
         """
+        from industries.tech.data_analyst.datasets.crm_dataset import load_crm_dataset
+
+session.flags["dataset"] = load_crm_dataset()
 
         session.flags.setdefault("scenario_phase", 0)
         session.flags.setdefault("scenario_complete", False)
