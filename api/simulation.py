@@ -112,3 +112,25 @@ def execute_task(req: TaskExecuteRequest):
 
     except Exception as e:
         raise HTTPException(400, str(e))
+
+
+
+# -------------------------
+# Portfolio Endpoint
+# -------------------------
+
+def get_portfolio(session_id: int):
+
+    record = _SESSIONS.get(session_id)
+
+    if not record:
+        return {"error": "Invalid session"}
+
+    session = record["session"]
+
+    scenario = session.flags.get("scenario")
+
+    if not scenario:
+        return {"error": "Scenario not initialized"}
+
+    return scenario.build_portfolio(session)
