@@ -103,4 +103,20 @@ def initialize_session(self, session):
     # -------------------------
 
     def is_complete(self, session):
-        return session.flags.get("scenario_complete", False)
+        return session.flags.get("scenario_complete",
+False)
+
+
+# -------------------------
+# PDF Export Hook
+# -------------------------
+
+def export_pdf(self, session):
+
+    from industries.tech.data_analyst.portfolio.pdf_export import (
+        export_portfolio_pdf,
+    )
+
+    portfolio = self.build_portfolio(session)
+
+    return export_portfolio_pdf(portfolio)
