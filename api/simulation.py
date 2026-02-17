@@ -134,3 +134,29 @@ def get_portfolio(session_id: int):
         return {"error": "Scenario not initialized"}
 
     return scenario.build_portfolio(session)
+
+
+# -------------------------
+# PDF Export Endpoint
+# -------------------------
+
+def export_portfolio_pdf(session_id: int):
+
+    record = _SESSIONS.get(session_id)
+
+    if not record:
+        return {"error": "Invalid session"}
+
+    session = record["session"]
+
+    scenario = session.flags.get("scenario")
+
+    if not scenario:
+        return {"error": "Scenario not initialized"}
+
+    filepath = scenario.export_pdf(session)
+
+    return {
+        "status": "success",
+        "file": filepath,
+    }
