@@ -124,3 +124,21 @@ class Session:
     @property
     def state(self) -> SessionState:
         return self._state
+
+    
+    def serialize(self):
+    return {
+        "industry": self.industry,
+        "role": self.role,
+        "flags": self.flags,
+        "events": self.events,
+        "decisions": self.decisions,
+        "time": self._time,
+    }
+
+
+def restore(self, data):
+    self.flags = data.get("flags", {})
+    self.events = data.get("events", [])
+    self.decisions = data.get("decisions", [])
+    self._time = data.get("time", 0)
