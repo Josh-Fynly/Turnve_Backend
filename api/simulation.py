@@ -5,7 +5,7 @@ Uses database-backed session storage.
 """
 
 from core_engine.engine import SimulationEngine
-from core_engine.session import SimulationSession as EngineSession
+from core_engine.session import Session
 
 from database.models import init_db
 from database.session_store import (
