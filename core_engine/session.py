@@ -7,6 +7,7 @@ Only the SimulationEngine is allowed to mutate it.
 
 from enum import Enum
 from typing import List, Any
+import uuid
 
 from core_engine.exceptions import InvalidStateError
 
@@ -20,6 +21,9 @@ class SessionState(Enum):
 
 class Session:
     def __init__(self, industry: str, role: str):
+        # Stable unique identifier for persistence
+        self.id = int(uuid.uuid4().int >> 64)
+
         self._industry = industry
         self._role = role
 
@@ -125,20 +129,28 @@ class Session:
     def state(self) -> SessionState:
         return self._state
 
-    
-    def serialize(self):
-    return {
-        "industry": self.industry,
-        "role": self.role,
-        "flags": self.flags,
-        "events": self.events,
-        "decisions": self.decisions,
-        "time": self._time,
-    }
+    # -------------------------
+    # Persistence
+    # -------------------------
 
+    def serialize(self) -> dict:
+        return {
+            "id": self.id,
+            "industry": self._industry,
+            "role": self._role,
+            "state": self._state.value,
+            "time": self._time,
+            "decisions": self._decisions,
+            "events": self._events,
+            "cohort_profile": self._cohort_profile,
+        }
 
-def restore(self, data):
-    self.flags = data.get("flags", {})
-    self.events = data.get("events", [])
-    self.decisions = data.get("decisions", [])
-    self._time = data.get("time", 0)
+    def restore(self, data: dict) -> None:
+        self.id = data.get("id", self.id)
+        self._industry = data.get("industry", self._industry)
+        self._role = data.get("role", self._role)
+        self._state = SessionState(data.get("state", "created"))
+        self._time = data.get("time", 0)
+        self._decisions = data.get("decisions", [])
+        self._events = data.get("events", [])
+        self._cohort_profile = data.get("cohort_profile", None)
