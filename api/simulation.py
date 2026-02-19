@@ -1,132 +1,128 @@
 """
-Simulation API Layer
+Simulation API Controller (Persistent)
 
-Exposes endpoints for:
-- session creation
-- task listing
-- task execution
+Uses database-backed session storage.
 """
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-
 from core_engine.engine import SimulationEngine
-from industries.tech.data_analyst.phases import phase1_foundations
+from core_engine.session import SimulationSession as EngineSession
 
-router = APIRouter(prefix="/simulation", tags=["simulation"])
+from database.models import init_db
+from database.session_store import (
+    save_session,
+    load_session,
+)
 
-
-# -------------------------
-# In-memory session store (MVP)
-# -------------------------
-
-ACTIVE_SESSIONS = {}
-
-
-# -------------------------
-# Request Models
-# -------------------------
-
-class SessionCreateRequest(BaseModel):
-    industry: str
-    role: str
-
-
-class TaskExecuteRequest(BaseModel):
-    session_id: str
-    task_id: str
+# Initialize DB tables on import
+init_db()
 
 
 # -------------------------
-# Session Endpoints
+# Session Rehydration
 # -------------------------
 
-@router.post("/create")
-def create_session(req: SessionCreateRequest):
-    engine = SimulationEngine(req.industry)
+def _rehydrate_session(session_id: int):
+    """
+    Load session from DB and restore engine state.
+    """
 
-    session = engine.create_session(req.role)
-
-    session_id = str(id(session))
-
-    ACTIVE_SESSIONS[session_id] = {
-        "engine": engine,
-        "session": session,
-    }
-
-    return {
-        "session_id": session_id,
-        "industry": req.industry,
-        "role": req.role,
-    }
-
-
-# -------------------------
-# Task Listing
-# -------------------------
-
-@router.get("/tasks/{session_id}")
-def list_tasks(session_id: str):
-    record = ACTIVE_SESSIONS.get(session_id)
+    record = load_session(session_id)
 
     if not record:
-        raise HTTPException(404, "Session not found")
+        return None, None
 
-    engine = record["engine"]
-    session = record["session"]
+    engine = SimulationEngine(record["industry"])
+
+    session = engine.create_session(record["role"])
+
+    session.id = session_id
+    session.restore(record["state"])
+
+    return engine, session
+
+
+# -------------------------
+# Create Session
+# -------------------------
+
+def create_simulation(industry: str, role: str):
+
+    engine = SimulationEngine(industry)
+    session = engine.create_session(role)
+
+    # Persist immediately
+    save_session(session)
+
+    return {
+        "session_id": session.id,
+        "industry": industry,
+        "role": role,
+    }
+
+
+# -------------------------
+# Step Simulation
+# -------------------------
+
+def step_simulation(session_id: int):
+
+    engine, session = _rehydrate_session(session_id)
+
+    if not session:
+        return {"error": "Invalid session"}
 
     engine.step(session)
 
+    save_session(session)
+
     return {
-        "tasks": session.decisions,
         "time": session.current_time(),
+        "decisions": session.decisions,
+        "events": session.events,
     }
 
 
 # -------------------------
-# Task Execution
+# Submit Task
 # -------------------------
 
-@router.post("/execute")
-def execute_task(req: TaskExecuteRequest):
-    record = ACTIVE_SESSIONS.get(req.session_id)
+def submit_task(
+    session_id: int,
+    task_id: str,
+    payload: dict,
+):
 
-    if not record:
-        raise HTTPException(404, "Session not found")
+    engine, session = _rehydrate_session(session_id)
 
-    session = record["session"]
+    if not session:
+        return {"error": "Invalid session"}
 
-    try:
-        result = phase1_foundations.evaluate_task(
-            session,
-            req.task_id,
-        )
+    scenario = session.flags.get("scenario")
 
-        return {
-            "task_id": req.task_id,
-            "result": result,
-            "completed_tasks": list(
-                session.flags.get("phase1_completed_tasks", [])
-            ),
-        }
+    if not scenario:
+        return {"error": "Scenario not initialized"}
 
-    except Exception as e:
-        raise HTTPException(400, str(e))
+    result = scenario.submit(
+        session,
+        task_id,
+        payload,
+    )
 
+    save_session(session)
+
+    return result
 
 
 # -------------------------
-# Portfolio Endpoint
+# Get Portfolio
 # -------------------------
 
 def get_portfolio(session_id: int):
 
-    record = _SESSIONS.get(session_id)
+    engine, session = _rehydrate_session(session_id)
 
-    if not record:
+    if not session:
         return {"error": "Invalid session"}
-
-    session = record["session"]
 
     scenario = session.flags.get("scenario")
 
@@ -137,17 +133,15 @@ def get_portfolio(session_id: int):
 
 
 # -------------------------
-# PDF Export Endpoint
+# Export Portfolio PDF
 # -------------------------
 
 def export_portfolio_pdf(session_id: int):
 
-    record = _SESSIONS.get(session_id)
+    engine, session = _rehydrate_session(session_id)
 
-    if not record:
+    if not session:
         return {"error": "Invalid session"}
-
-    session = record["session"]
 
     scenario = session.flags.get("scenario")
 
@@ -156,7 +150,28 @@ def export_portfolio_pdf(session_id: int):
 
     filepath = scenario.export_pdf(session)
 
+    save_session(session)
+
     return {
         "status": "success",
         "file": filepath,
     }
+
+
+# -------------------------
+# End Simulation
+# -------------------------
+
+def end_simulation(session_id: int):
+
+    engine, session = _rehydrate_session(session_id)
+
+    if not session:
+        return {"error": "Invalid session"}
+
+    # Optional: mark complete
+    session.flags["scenario_complete"] = True
+
+    save_session(session)
+
+    return {"status": "ended"}
